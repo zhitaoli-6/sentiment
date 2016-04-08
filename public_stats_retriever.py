@@ -1,4 +1,5 @@
 #encoding=utf-8
+#!/usr/bin/env python
 import sys, json, logging, time
 
 sys.path.insert(0, '/home/lizhitao/repos/sinaweibopy/')
@@ -24,14 +25,14 @@ class PublicStatRetriever(object):
         self.path = path
         self.total_cnt = 0
         
-    def run(self, interval=600):
+    def run(self, interval=10):
         while True:
             try:
                 self.retrieve()
             except Exception as e:
                 logging.exception(e)
-            logging.info('sleep for 10mins...')
-            time.sleep(600)
+            logging.info('sleep for %smin...' % interval)
+            time.sleep(interval*60)
         
     def retrieve(self):
         linfo('-----------------')
@@ -48,7 +49,7 @@ def main():
     #rsp = client.statuses.user_timeline.get(screen_name=name)
     #rsp = client.statuses.home_timeline.get()
     obj = PublicStatRetriever('stats/public_stats')
-    obj.run()
+    obj.run(interval=0.5)
 
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment_public_states_retriever.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)

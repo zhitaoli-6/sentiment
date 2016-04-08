@@ -1,0 +1,4 @@
+#!/bin/bash
+
+exec python public_stats_retriever.py 1>> ~/log/std.log 2>>~/log/err.log &
+
