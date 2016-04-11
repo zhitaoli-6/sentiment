@@ -62,7 +62,7 @@ def load_emoticon(in_path='stats/emoticon_selected'):
     return pos_icons, neg_icons
 
 excludes = ['#']
-def parse_emoticon_stats(in_path='stats/public_stats', out_path='stats/train_data'):
+def parse_emoticon_stats(in_path='stats/public_stats', out_path='stats/visual_train_data'):
     st = time.time()
     pos_icons, neg_icons = load_emoticon()
 
@@ -102,8 +102,10 @@ def parse_emoticon_stats(in_path='stats/public_stats', out_path='stats/train_dat
         stats = icon2stat.get(icon, [])
         #write(out_path, 'a', '--------------------------------------\nicon: %s. stats_cnt: %s\n' % (icon, len(stats)))
         for stat in stats:
-            dic = {'%s' % ('P' if icon in pos_icons else 'N'):stat }
-            write(out_path, 'a', '%s\n' % json.dumps(dic))
+            #dic = {'%s' % ('P' if icon in pos_icons else 'N'):stat }
+            #write(out_path, 'a', '%s\n' % json.dumps(dic))
+            txt = '%s%s' % ('P' if icon in pos_icons else 'N', stat)
+            write(out_path, 'a', '%s\n' % txt)
             #if icon in pos_icons:
             #    write(out_path, 'a', 'P%s\n' % stat)
             #else:
