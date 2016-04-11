@@ -14,16 +14,19 @@ ldebug = logging.debug
 
 #optimize: (1)laplace smoothing.
 
-#prune: (2)url,(3)high and low frequency(low ability for classificaion), 
-#optimize: (4)term presence feature perform better than bag of words
-#10folder cross-validation-metric now(2, 3, 4 enabled): precision: 0.9065. recall: 0.9022.f-value:0.9044
-#cross valdation without emoticon on test data set: precision: 0.6885. recall: 0.6863.f-value:0.6874
+#prune: (2)url replace,(3)remove words with too high and low frequency(low ability for classificaion), 
+#optimize: (4)term presence feature perform better than bag of words. (5)unigam-bigram mixed perfrom better than unigram
 
-#FAIL: bigram, salience, entropy strategy
+#10folder cross-validation-metric now(2, 3, 4 enabled): precision: 0.9617. recall: 0.9595.f-value:0.9606
+#cross valdation NO emoticon on test data set: precision: 0.7051. recall: 0.7037.f-value:0.7044
+
+#FAIL: salience, entropy strategy
+
+#bug: emoticon. see file named 'case'
 
 class NBClassifier(object):
     '''
-    Base Class implment some common methods for classifiers
+    Naive Bayes Model. Feature: unigram-bigram mixed
     '''
     class Word2Cnt(dict):
         def __init__(self):
@@ -31,18 +34,25 @@ class NBClassifier(object):
             #P:positive, N: negative, O: objective
             self["P"] = {}
             self["N"] = {}
-            
 
     def __init__(self, train_data_path, **kwargs):
         self._path = train_data_path
         self._xs = []
         self._ys = []
 
-        #self._ngrams_config = ['unigram', 'bigram']
+        #self._ngrams_config = ['unigram']
         self._ngrams_config = ['unigram', 'bigram']
+        
 
-    def predict(self, x):
-        pass
+    def predict(self):
+        cases = []
+        with open('case', 'r') as f:
+            for line in f:
+                case = unicode(line.strip(), 'utf-8')
+                cases.append(case)
+        for case in cases:
+            print 'Begin Debug bad case:%s' % case
+            print self._predict(case, self.total_w2c, self.total_t2c, debug=True)
 
     def train(self):
         #word2cnt = NBClassifier.Word2Cnt()
@@ -52,7 +62,6 @@ class NBClassifier(object):
         #return
         self._load_data()
         self._replace_url(fill=True)
-        self._remove_emoticon()
         self._train()
 
     def _train(self, shard_sz=10):
@@ -95,7 +104,7 @@ class NBClassifier(object):
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, False)
             pred_cnt = {"P":0,"N":0,"O":0}
             for x in test_sd:
-                predict_y = self._predict(x,train_w2c, train_t2c)
+                predict_y = self._predict(self._xs[x],train_w2c, train_t2c, emoticon=False)
                 if predict_y == self._ys[x]:
                     pred_cnt[self._ys[x]] += 1
                 elif random.randint(1, 100) == 1:
@@ -111,17 +120,30 @@ class NBClassifier(object):
             f += f_value
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, True)
             #linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f' % (precision, recall, f_value))
-        linfo('METRIC: precision: %.4f. recall: %.4f.f-value:%.4f' % (p / shard_sz, r / shard_sz, f / shard_sz))
+        linfo('Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f' % (p / shard_sz, r / shard_sz, f / shard_sz))
+        self.total_w2c, self.total_t2c = total_word2cnt, total_tag2cnt
 
     #predict test_data
-    def _predict(self, index, train_w2c, train_t2c):
+    def _predict(self, txt, train_w2c, train_t2c, debug=False, emoticon=True):
         p_pos, p_neg = (0.0, 0.0)
-        txt = self._xs[index]
-        grams = self._retrieve_ngrams(txt)
+        if not emoticon:
+            txt = self.__remove_emoticon(txt)
+        grams = self._retrieve_feature(txt)
+        if debug:
+            linfo('begin debug case: %s' % txt)
         for w in grams:
-            p_pos += self._cal_likelihood(train_w2c["P"].get(w, 0), train_t2c["P"]) 
-            p_neg += self._cal_likelihood(train_w2c["N"].get(w, 0), train_t2c["N"])  
-        return "P" if p_pos > p_neg else "N"
+            p_gram_pos = self._cal_likelihood(train_w2c["P"].get(w, 0), train_t2c["P"]) 
+            p_pos += p_gram_pos 
+            if debug:
+                linfo('DEBUG probability for gram %s when given tag %s is: %.4f. gram cnt: %s.tag cnt: %s' % (w, 'P', p_gram_pos, train_w2c['P'].get(w, 0), train_t2c['P']))
+            p_gram_neg = self._cal_likelihood(train_w2c["N"].get(w, 0), train_t2c["N"])  
+            p_neg += p_gram_neg 
+            if debug:
+                linfo('DEBUG probability for gram %s when given tag %s is: %.4f. gram cnt: %s.tag cnt: %s' % (w, 'N', p_gram_neg, train_w2c['N'].get(w, 0), train_t2c['N']))
+        pred_tag = "P" if p_pos > p_neg else "N"
+        if debug: 
+            linfo('predict tag: %s. p_pos: %.6f. p_neg: %.6f.' % (pred_tag, p_pos, p_neg))
+        return pred_tag
            
     def _cal_likelihood(self, word_cnt, tag_cnt):
         return math.log(1.0 * word_cnt / tag_cnt + 1)
@@ -150,7 +172,7 @@ class NBClassifier(object):
             txt = self._xs[index] 
             tag = self._ys[index]
             tag2cnt[tag] += 1
-            bags = self._retrieve_ngrams(txt)
+            bags = self._retrieve_feature(txt)
             for w in bags:
                 word2presence[tag].setdefault(w, 0)
                 word2presence[tag][w] += 1
@@ -159,7 +181,7 @@ class NBClassifier(object):
             
         return tag2cnt, word2presence
     
-    def _retrieve_ngrams(self, txt):
+    def _retrieve_feature(self, txt):
         bags = set()
         for i, w in enumerate(txt):
             if 'unigram' in self._ngrams_config:
@@ -169,6 +191,9 @@ class NBClassifier(object):
                 gram = '%s%s' % (txt[i-1], w)
                 if gram not in bags:
                     bags.add(gram)
+        emoticons = self._retrieve_emoticon(txt)
+        for icon in emoticons:
+            bags.add(icon)
         return bags
     
 
@@ -194,24 +219,24 @@ class NBClassifier(object):
         #inter_words = set(pos_w2c.keys()) & set(neg_w2c.keys())
         #total_words = set(pos_w2c.keys()) | set(neg_w2c.keys())
         ##salience prune strategy
-        ##for w in total_words:
-        ##    p_w_pos = pos_w2c.get(w, 0) * 1.0 / tag2cnt['P']
-        ##    p_w_neg = neg_w2c.get(w, 0) * 1.0 / tag2cnt['N']
-        ##    w2s[w] = 1 - min(p_w_pos, p_w_neg) / (max(p_w_pos, p_w_neg) + 0.00001)
-       
-        ##entropy prune strategy
         #for w in total_words:
-        #    w2s[w] = 0.0
-        #    total_cnt = sum([w2c.get(w, 0) for tag,w2c in total_word2cnt.items()])
-        #    if total_cnt == 0: 
-        #        continue
-        #    w2s[w] = sum([w2c[w]*1.0/total_cnt * math.log(w2c[w]*1.0/total_cnt) for tag, w2c in total_word2cnt.items() if w2c.get(w, 0) != 0])
+        #    p_w_pos = pos_w2c.get(w, 0) * 1.0 / tag2cnt['P']
+        #    p_w_neg = neg_w2c.get(w, 0) * 1.0 / tag2cnt['N']
+        #    w2s[w] = 1 - min(p_w_pos, p_w_neg) / (max(p_w_pos, p_w_neg) + 0.00001)
+       
+        ###entropy prune strategy
+        ##for w in total_words:
+        ##    w2s[w] = 0.0
+        ##    total_cnt = sum([w2c.get(w, 0) for tag,w2c in total_word2cnt.items()])
+        ##    if total_cnt == 0: 
+        ##        continue
+        ##    w2s[w] = sum([w2c[w]*1.0/total_cnt * math.log(w2c[w]*1.0/total_cnt) for tag, w2c in total_word2cnt.items() if w2c.get(w, 0) != 0])
         #sort_words = sorted(w2s.keys(), key=lambda x: w2s[x], reverse=True)
         #print 'pos_words:%s. neg_words:%s' % (len(pos_w2c), len(neg_w2c))
         #print 'len of inter_words for classes: %s' % len(inter_words)
         #for x in sort_words:
         #    print 'word: %s. score: %.4f' % (x, w2s[x])
-        #self.__delete_words(total_word2cnt, rid2word_info, filter(lambda x:w2s[x] < -0.64, w2s.keys()))
+        #self.__delete_words(total_word2cnt, rid2word_info, filter(lambda x:w2s[x] < 0.1, w2s.keys()))
         linfo('end prune')
  
 
@@ -259,7 +284,23 @@ class NBClassifier(object):
         for i in range(len(self._xs)):
             self._xs[i] = self.__remove_emoticon(self._xs[i])
         linfo('end remove emoticon')
-
+    
+    def _retrieve_emoticon(self, txt):
+        icons = []
+        if '[' not in txt:
+            return icons
+        ed = 0
+        while '[' in txt[ed:]:
+            txt = txt[ed:]
+            st = txt.find('[')
+            ed = st
+            while ed < len(txt) and txt[ed] != ']':
+                ed += 1
+            if ed < len(txt) and txt[ed] == ']':
+                icons.append(txt[st:ed+1])
+            ed += 1
+        return icons
+ 
     def __remove_emoticon(self, txt):
         if '[' not in txt:
             return txt
@@ -330,6 +371,7 @@ def main():
     #return
     nb = NBClassifier('stats/train_data')
     nb.train()
+    #nb.predict()
     
     
 if __name__ == '__main__':
