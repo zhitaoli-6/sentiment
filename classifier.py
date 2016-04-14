@@ -1,5 +1,5 @@
 #encoding=utf-8 
-#!/usr/bin/env python
+#!/usr/bin/env python 
 import sys, os
 import json, logging, time, copy, random, math
 
@@ -40,8 +40,10 @@ class NBClassifier(object):
         self._xs = []
         self._ys = []
 
-        #self._ngrams_config = ['unigram']
-        self._ngrams_config = ['unigram', 'bigram']
+        #self._ngrams_config = ['trigram']
+        config = ['unigram', 'bigram', 'trigram']
+        self._ngrams_config =  config
+        self._enable_emoticon = False 
         
 
     def predict(self):
@@ -66,6 +68,7 @@ class NBClassifier(object):
 
     def _train(self, shard_sz=10):
         linfo('begin train classifier')
+        st = time.time()
         rid2shard = self._random_shardlize(shard_sz,load=True)
 
         #rid2word_info = {}
@@ -104,10 +107,11 @@ class NBClassifier(object):
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, False)
             pred_cnt = {"P":0,"N":0,"O":0}
             for x in test_sd:
-                predict_y = self._predict(self._xs[x],train_w2c, train_t2c, emoticon=False)
+                predict_y = self._predict(self._xs[x],train_w2c, train_t2c, emoticon=self._enable_emoticon)
                 if predict_y == self._ys[x]:
                     pred_cnt[self._ys[x]] += 1
-                elif random.randint(1, 100) == 1:
+                #elif random.randint(1, 100) == 1:
+                else:
                     ldebug('Predict Error-%s. Answer:%s. Predict:%s.' % (self._xs[x], self._ys[x], predict_y))
             precision = 1.0 * sum(pred_cnt.values()) / sum(test_t2c.values())
             calls = [pred*1.0/tag_cnt for pred, tag_cnt in zip(pred_cnt.values(), test_t2c.values()) if tag_cnt]
@@ -120,7 +124,7 @@ class NBClassifier(object):
             f += f_value
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, True)
             #linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f' % (precision, recall, f_value))
-        linfo('Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f' % (p / shard_sz, r / shard_sz, f / shard_sz))
+        linfo('Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f. train cost used: %.2f' % (p / shard_sz, r / shard_sz, f / shard_sz, time.time()- st))
         self.total_w2c, self.total_t2c = total_word2cnt, total_tag2cnt
 
     #predict test_data
@@ -161,7 +165,6 @@ class NBClassifier(object):
             else:
                 total_t2c[tag] -= cnt
 
-    #feature config: unigram, bigram, trigram
     def _cal_shard2info(self, shard_indexs):
         #word2cnt = NBClassifier.Word2Cnt()
         word2presence = NBClassifier.Word2Cnt() 
@@ -181,20 +184,27 @@ class NBClassifier(object):
             
         return tag2cnt, word2presence
     
-    def _retrieve_feature(self, txt):
-        bags = set()
+    #feature config: unigram, bigram, trigram
+    def _retrieve_feature(self, txt, config='presence'):
+        if config not in ['presence', 'frequency']:
+            raise Exception('feature representation ERROR. not supported type for %s' % config)
+        bags = []
         for i, w in enumerate(txt):
             if 'unigram' in self._ngrams_config:
                 if w not in bags:
-                    bags.add(w)
+                    bags.append(w)
             if 'bigram' in self._ngrams_config and i >= 1:
                 gram = '%s%s' % (txt[i-1], w)
                 if gram not in bags:
-                    bags.add(gram)
+                    bags.append(gram)
+            if 'trigram' in self._ngrams_config and i >= 2:
+                gram = '%s%s%s' % (txt[i-2], txt[i-1], w)
+                if gram not in bags:
+                    bags.append(gram)
         emoticons = self._retrieve_emoticon(txt)
         for icon in emoticons:
-            bags.add(icon)
-        return bags
+            bags.append(icon)
+        return bags if config == 'frequency' else set(bags) 
     
 
     #prune those valueless words. Example:  url, words with high frequency
@@ -371,7 +381,7 @@ def main():
     #return
     nb = NBClassifier('stats/train_data')
     nb.train()
-    #nb.predict()
+    nb.predict()
     
     
 if __name__ == '__main__':
