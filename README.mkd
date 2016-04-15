@@ -1,8 +1,19 @@
-sentiment
+#Sentiment analysis project: MoodIntimate Wiki
+=====
+##Task:
+    *given Chinese sentence, MoodIntimate analyses it and predict the sentiment polarity
+##Appication:
+    *Sentiment Pattern Recognition
+    *Abnormal Event Detection
+    *Real-time Sentiment Monitoring
 
-$ J_\alpha(x) = \sum_{m=0}^\infty \frac{(-1)^m}{m! \Gamma (m + \alpha + 1)} {\left({ \frac{x}{2} }\right)}^{2m + \alpha} \text {，行内公式示例} $
+##Train Data Source:
+    *Weibo API
+    
+
+##Algorithms:
+    1. NaiveBayes
+    2. SVM
 
 
-
-It's very easy to make some words **bold** and other words *italic* with Markdown. You can even [link to Google!](http://google.com)'
 
