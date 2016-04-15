@@ -1,14 +1,14 @@
 #Sentiment analysis project: MoodIntimate Wiki
 =====
 ##Task:
-    *given Chinese sentence, MoodIntimate analyses it and predict the sentiment polarity
+    * given Chinese sentence, MoodIntimate analyses it and predict the sentiment polarity
 ##Appication:
-    *Sentiment Pattern Recognition
-    *Abnormal Event Detection
-    *Real-time Sentiment Monitoring
+    * Sentiment Pattern Recognition
+    * Abnormal Event Detection
+    * Real-time Sentiment Monitoring
 
 ##Train Data Source:
-    *Weibo API
+    * Weibo API
     
 
 ##Algorithms:
