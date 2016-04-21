@@ -41,8 +41,8 @@ class NBClassifier(object):
         self._path = train_data_path
         #self._ngrams_config = ['trigram']
         config = ['unigram', 'bigram', 'trigram', 'emoticon']
-        self._ngrams_config = [config[0], config[3]]
-        self._enable_emoticon = True 
+        self._ngrams_config = [config[3]]
+        self._enable_emoticon = True
         
 
     def predict(self):
