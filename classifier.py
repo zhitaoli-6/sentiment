@@ -42,8 +42,8 @@ class NBClassifier(object):
 
         #self._ngrams_config = ['trigram']
         config = ['unigram', 'bigram', 'trigram']
-        self._ngrams_config =  config
-        self._enable_emoticon = False 
+        self._ngrams_config =  config[0:1]
+        self._enable_emoticon = True
         
 
     def predict(self):
@@ -60,10 +60,10 @@ class NBClassifier(object):
         #word2cnt = NBClassifier.Word2Cnt()
         
         #txt = '今天天气就是棒[哈哈] [太阳] [飞起来]#'
-        #print self._remove_emoticon(txt)
         #return
         self._load_data()
         self._replace_url(fill=True)
+        #self._remove_emoticon()
         self._train()
 
     def _train(self, shard_sz=10):
@@ -228,6 +228,10 @@ class NBClassifier(object):
         #pos_w2c, neg_w2c = total_word2cnt["P"], total_word2cnt["N"]
         #inter_words = set(pos_w2c.keys()) & set(neg_w2c.keys())
         #total_words = set(pos_w2c.keys()) | set(neg_w2c.keys())
+        #print 'total words cnt: %s' % len(total_words)
+        #for w in total_words:
+        #    print w
+        
         ##salience prune strategy
         #for w in total_words:
         #    p_w_pos = pos_w2c.get(w, 0) * 1.0 / tag2cnt['P']
@@ -381,7 +385,7 @@ def main():
     #return
     nb = NBClassifier('stats/train_data')
     nb.train()
-    nb.predict()
+    #nb.predict()
     
     
 if __name__ == '__main__':

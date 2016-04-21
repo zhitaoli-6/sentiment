@@ -1,11 +1,13 @@
 #encoding=utf-8
 import sys, json, logging
-print sys.path
+for x in sys.path:
+    print x
+
 sys.path.insert(0, '/home/lizhitao/repos/sinaweibopy/')
 
 from snspy import APIClient as APIC, SinaWeiboMixin as WbM
 from const import APP_KEY, APP_SECRET, CALLBACK_URL, ACCESS_TOKEN, EXPIRES
-from classifier import BaseClassifier
+#from classifier import BaseClassifier
 
 print BaseClassifier.__doc__
 
