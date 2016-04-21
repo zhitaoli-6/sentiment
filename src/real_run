@@ -1,5 +1,7 @@
 #!/bin/bash
 
 #exec python public_stats_retriever.py 1>> ~/log/std.log 2>>~/log/err.log &
-exec python classifier.py 1>std.log 2>>~/log/err.log &
+
+#exec python classifier.py 1>std.log 2>>~/log/err.log &
+exec python bayes_classifier.py 1>std.log 2>>~/log/err.log &
 

@@ -3,7 +3,9 @@
 import sys, os
 import json, logging, time, copy, random, math
 
-from tool import EasyTool as ET
+from easy_tool import EasyTool as ET
+from stats_tool import StatsTool as ST
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
@@ -37,13 +39,10 @@ class NBClassifier(object):
 
     def __init__(self, train_data_path, **kwargs):
         self._path = train_data_path
-        self._xs = []
-        self._ys = []
-
         #self._ngrams_config = ['trigram']
-        config = ['unigram', 'bigram', 'trigram']
-        self._ngrams_config =  config[0:1]
-        self._enable_emoticon = True
+        config = ['unigram', 'bigram', 'trigram', 'emoticon']
+        self._ngrams_config = [config[0], config[3]]
+        self._enable_emoticon = True 
         
 
     def predict(self):
@@ -61,9 +60,11 @@ class NBClassifier(object):
         
         #txt = '今天天气就是棒[哈哈] [太阳] [飞起来]#'
         #return
-        self._load_data()
-        self._replace_url(fill=True)
-        #self._remove_emoticon()
+        #self._load_data()
+        #self._replace_url(fill=True)
+        self._xs, self._ys = ST.load_data(self._path)
+        ST.replace_url(self._xs, fill=True)
+        #ST.remove_emoticon(self._xs)
         self._train()
 
     def _train(self, shard_sz=10):
@@ -106,6 +107,7 @@ class NBClassifier(object):
             test_w2c, test_t2c  = rid2word_info[rid], rid2tag_cnt[rid]
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, False)
             pred_cnt = {"P":0,"N":0,"O":0}
+            n_st = time.time()
             for x in test_sd:
                 predict_y = self._predict(self._xs[x],train_w2c, train_t2c, emoticon=self._enable_emoticon)
                 if predict_y == self._ys[x]:
@@ -123,16 +125,19 @@ class NBClassifier(object):
             r += recall
             f += f_value
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, True)
-            #linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f' % (precision, recall, f_value))
+            linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f. time uses this round: %.2f' % (precision, recall, f_value, time.time() - n_st))
         linfo('Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f. train cost used: %.2f' % (p / shard_sz, r / shard_sz, f / shard_sz, time.time()- st))
         self.total_w2c, self.total_t2c = total_word2cnt, total_tag2cnt
 
     #predict test_data
     def _predict(self, txt, train_w2c, train_t2c, debug=False, emoticon=True):
         p_pos, p_neg = (0.0, 0.0)
-        if not emoticon:
-            txt = self.__remove_emoticon(txt)
-        grams = self._retrieve_feature(txt)
+        if emoticon and 'emoticon' not in self._ngrams_config:
+            self._ngrams_config.append('emoticon')
+        elif not emoticon and 'emoticon' in self._ngrams_config:
+            self._ngrams_config = filter(lambda x: x != 'emoticon', self._ngrams_config)
+        #grams = self._retrieve_feature(txt)
+        grams = ST.retrieve_feature(txt, feature_extract_config=self._ngrams_config)
         if debug:
             linfo('begin debug case: %s' % txt)
         for w in grams:
@@ -175,7 +180,7 @@ class NBClassifier(object):
             txt = self._xs[index] 
             tag = self._ys[index]
             tag2cnt[tag] += 1
-            bags = self._retrieve_feature(txt)
+            bags = ST.retrieve_feature(txt, feature_extract_config=self._ngrams_config)
             for w in bags:
                 word2presence[tag].setdefault(w, 0)
                 word2presence[tag][w] += 1
@@ -183,29 +188,6 @@ class NBClassifier(object):
                 #word2cnt[tag][w] += 1
             
         return tag2cnt, word2presence
-    
-    #feature config: unigram, bigram, trigram
-    def _retrieve_feature(self, txt, config='presence'):
-        if config not in ['presence', 'frequency']:
-            raise Exception('feature representation ERROR. not supported type for %s' % config)
-        bags = []
-        for i, w in enumerate(txt):
-            if 'unigram' in self._ngrams_config:
-                if w not in bags:
-                    bags.append(w)
-            if 'bigram' in self._ngrams_config and i >= 1:
-                gram = '%s%s' % (txt[i-1], w)
-                if gram not in bags:
-                    bags.append(gram)
-            if 'trigram' in self._ngrams_config and i >= 2:
-                gram = '%s%s%s' % (txt[i-2], txt[i-1], w)
-                if gram not in bags:
-                    bags.append(gram)
-        emoticons = self._retrieve_emoticon(txt)
-        for icon in emoticons:
-            bags.append(icon)
-        return bags if config == 'frequency' else set(bags) 
-    
 
     #prune those valueless words. Example:  url, words with high frequency
     def _prune(self, total_word2cnt, rid2word_info, tag2cnt):
@@ -265,94 +247,6 @@ class NBClassifier(object):
                     if w in w2c:
                         del w2c[w]
 
-    def _replace_url(self, fill=True):
-        #URL replaced as '#'
-        linfo('begin replace url')
-        urls = []
-        for i, txt in enumerate(self._xs):
-            if 'http' in txt:
-                ss = []
-                ed = 0
-                while 'http' in txt[ed:]:
-                    txt = txt[ed:]
-                    st = txt.find('http')
-                    ss.append('%s' % txt[:st])
-                    if fill:
-                        ss.append('#')
-                    ed = st
-                    while (txt[ed] >= 'a' and txt[ed] <= 'z') or (txt[ed] >= 'A' and txt[ed] <= 'Z')  or (txt[ed] >= '0' and txt[ed] <= '9') or txt[ed] in ['.', ':', '/']:
-                        ed += 1 
-                        if ed >= len(txt):
-                            break
-                if ed < len(txt):
-                    ss.append(txt[ed:])
-                urls.append((i, ''.join(ss)))
-        linfo('OPTIMIZATION:url in %s instances replaced' % len(urls))
-        for i, new_url in urls:
-            self._xs[i] = new_url
-            #print new_url
-        linfo('end replace url')
-
-    def _remove_emoticon(self):
-        linfo('begin remove emoticon')
-        for i in range(len(self._xs)):
-            self._xs[i] = self.__remove_emoticon(self._xs[i])
-        linfo('end remove emoticon')
-    
-    def _retrieve_emoticon(self, txt):
-        icons = []
-        if '[' not in txt:
-            return icons
-        ed = 0
-        while '[' in txt[ed:]:
-            txt = txt[ed:]
-            st = txt.find('[')
-            ed = st
-            while ed < len(txt) and txt[ed] != ']':
-                ed += 1
-            if ed < len(txt) and txt[ed] == ']':
-                icons.append(txt[st:ed+1])
-            ed += 1
-        return icons
- 
-    def __remove_emoticon(self, txt):
-        if '[' not in txt:
-            return txt
-        ss = []
-        ed = 0
-        while '[' in txt[ed:]:
-            txt = txt[ed:]
-            st = txt.find('[')
-            ss.append(txt[:st])
-            ed = st
-            while ed < len(txt) and txt[ed] != ']':
-                ed += 1
-            ed += 1
-        if ed < len(txt):
-            ss.append(txt[ed:])
-        return ''.join(ss)
-        
-
-    def _load_data(self):
-        st = time.time()
-        #cnt = 0
-        with open(self._path, 'r') as f:
-            for line in f:
-                dic = json.loads(line.strip())
-                if len(dic) != 1:
-                    print 'exception: %s' % line
-                    continue
-                tag, txt = dic.items()[0]
-                self._ys.append(tag)
-                self._xs.append(txt)
-                #cnt += 1
-                #print txt, len(txt)
-                #for i in range(len(txt)):
-                #    print txt[i],
-                #if cnt >= 1:
-                #    break
-        linfo('time used: %.2f. instances cnt: %s' % (time.time() - st, len(self._xs)))
-
     def _random_shardlize(self, shard_sz, save=False, load=False):
         if shard_sz <= 1:
             raise Exception('unvalid shard_sz for cross validation')
@@ -361,7 +255,7 @@ class NBClassifier(object):
                 line = f.readline().strip()
                 rand_req = map(int, line.split(' '))
                 if len(rand_req) != len(self._xs):
-                    raise Exception('Load rand_req fail. wrong results')
+                    raise Exception('Load rand_req fail. wrong results. random sequence cnt: %s.' % len(rand_req))
         else:
             rand_req =  [random.randint(1, shard_sz) for i in range(len(self._xs))]
         if save:
@@ -383,7 +277,7 @@ class NBClassifier(object):
 def main():
     #print dir(NBClassifier)
     #return
-    nb = NBClassifier('stats/train_data')
+    nb = NBClassifier('../stats/train_data')
     nb.train()
     #nb.predict()
     
