@@ -5,7 +5,7 @@ import sys, json, logging, time
 sys.path.insert(0, '/home/lizhitao/repos/sinaweibopy/')
 from snspy import APIClient as APIC, SinaWeiboMixin as WbM
 from const import APP_KEY, APP_SECRET, CALLBACK_URL, ACCESS_TOKEN, EXPIRES
-from tool import EasyTool as ET
+from easy_tool import EasyTool as ET
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -48,7 +48,7 @@ def main():
     #paras = {'screen_name':'BrightestSirius', 'count':5, 'page':1}
     #rsp = client.statuses.user_timeline.get(screen_name=name)
     #rsp = client.statuses.home_timeline.get()
-    obj = PublicStatRetriever('stats/public_stats')
+    obj = PublicStatRetriever('../stats/test_public_stats')
     obj.run(interval=0.5)
 
 if __name__ == '__main__':

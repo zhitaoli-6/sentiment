@@ -38,11 +38,15 @@ class NBClassifier(object):
             self["N"] = {}
 
     def __init__(self, train_data_path, **kwargs):
-        self._path = train_data_path
-        #self._ngrams_config = ['trigram']
+        self._train_path = train_data_path
         config = ['unigram', 'bigram', 'trigram', 'emoticon']
-        self._ngrams_config = [config[3]]
-        self._enable_emoticon = True
+
+        self._ngrams_config = [config[0], config[1]]
+        self._enable_test_emoticon = True 
+
+        linfo('train feature extraction: %s' % self._ngrams_config)
+        linfo('test emoticon: %s' % self._enable_test_emoticon)
+        self._test_path = '../test_data/test_data'
         
 
     def predict(self):
@@ -62,12 +66,13 @@ class NBClassifier(object):
         #return
         #self._load_data()
         #self._replace_url(fill=True)
-        self._xs, self._ys = ST.load_data(self._path)
-        ST.replace_url(self._xs, fill=True)
-        #ST.remove_emoticon(self._xs)
-        self._train()
+        self._train_xs, self._train_ys = ST.load_data(self._train_path)
+        ST.replace_url(self._train_xs, fill=True)
+        #ST.remove_emoticon(self._train_xs)
+        self._train(cross_validation=False)
 
-    def _train(self, shard_sz=10):
+    def _train(self, shard_sz=10, cross_validation=True):
+        print self._ngrams_config
         linfo('begin train classifier')
         st = time.time()
         rid2shard = self._random_shardlize(shard_sz,load=True)
@@ -92,52 +97,79 @@ class NBClassifier(object):
             for tag, cnt in rid2tag_cnt[rid].items():
                 total_tag2cnt[tag] += cnt
         #self._debug_bigram(total_word2presence)
-        #linfo('end')
-        #return
         self._prune(total_word2presence, rid2word_presence, total_tag2cnt)
-        #return
+        self.total_w2c, self.total_t2c = total_word2presence, total_tag2cnt
         #cross_validation
-        linfo('beign cross validation')
-        total_word2cnt = total_word2presence
-        rid2word_info = rid2word_presence
+        if cross_validation:
+            linfo('beign cross validation')
+            p, r, f= self._cross_train(total_word2presence, rid2word_presence, total_tag2cnt, rid2tag_cnt, shard_sz, rid2shard)
+            linfo('Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f. train cost used: %.2f' % (p , r , f, time.time()- st))
+        else:
+            linfo('beign train and test with manually tagged data set')
+            p, r, f = self._all_train(total_word2presence, total_tag2cnt)
+            linfo('Manually Tag Data Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f. train cost used: %.2f' % (p , r , f , time.time()- st))
+        
+    def _cross_train(self, total_word2cnt, rid2word_info, total_tag2cnt, rid2tag_cnt, shard_sz, rid2shard):
         p, r, f = 0, 0, 0
         for rid in range(1, shard_sz+1):
-            test_sd = rid2shard[rid]
+            test_sd = rid2shard[rid] 
             train_w2c,train_t2c  = total_word2cnt, total_tag2cnt
             test_w2c, test_t2c  = rid2word_info[rid], rid2tag_cnt[rid]
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, False)
-            pred_cnt = {"P":0,"N":0,"O":0}
-            n_st = time.time()
-            for x in test_sd:
-                predict_y = self._predict(self._xs[x],train_w2c, train_t2c, emoticon=self._enable_emoticon)
-                if predict_y == self._ys[x]:
-                    pred_cnt[self._ys[x]] += 1
-                #elif random.randint(1, 100) == 1:
-                else:
-                    ldebug('Predict Error-%s. Answer:%s. Predict:%s.' % (self._xs[x], self._ys[x], predict_y))
-            precision = 1.0 * sum(pred_cnt.values()) / sum(test_t2c.values())
-            calls = [pred*1.0/tag_cnt for pred, tag_cnt in zip(pred_cnt.values(), test_t2c.values()) if tag_cnt]
-            if len(calls) != 2:
-                raise Exception("only byclass is supported now! but %s tags are given" % len(calls))
-            recall = sum(calls) / len(calls)
-            f_value = 2*precision*recall / (precision + recall)
-            p += precision
-            r += recall
-            f += f_value
+            _s_xs = [self._train_xs[x] for x in test_sd]
+            _s_ys = [self._train_ys[x] for x in test_sd]
+            tp, tr, tf = self._batch_predict(_s_xs, _s_ys, train_w2c, train_t2c, test_t2c)
+            p += tp
+            r += tr
+            f += tf
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, True)
-            linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f. time uses this round: %.2f' % (precision, recall, f_value, time.time() - n_st))
-        linfo('Classifier METRIC trained-precision: %.4f. recall: %.4f.f-value:%.4f. train cost used: %.2f' % (p / shard_sz, r / shard_sz, f / shard_sz, time.time()- st))
-        self.total_w2c, self.total_t2c = total_word2cnt, total_tag2cnt
+            #linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f. time uses this round: %.2f' % (precision, recall, f_value, time.time() - n_st))
+        return p/shard_sz, r/shard_sz, f/shard_sz
+
+    def _all_train(self, total_word2cnt, total_tag2cnt):
+        if os.path.exists(self._test_path):
+            test_xs, test_ys = ST.load_data(self._test_path)
+            #linfo('load manually tagged data count: %s' % len(test_xs))
+        else:
+            return
+        test_t2c = {"P":0,"N":0,"O":0}
+        for y in test_ys:
+            if y not in test_t2c:
+                raise Exception('Key Error in tag2cnt. unknown key: %s' % y)
+            test_t2c[y] += 1
+        print test_t2c
+        return  self._batch_predict(test_xs, test_ys, total_word2cnt, total_tag2cnt, test_t2c)
+        
+ 
+    def _batch_predict(self, _xs, _ys, train_w2c, train_t2c, test_t2c):
+        pred_cnt = {"P":0,"N":0,"O":0}
+        n_st = time.time()
+        cnt = 0
+        for x, y in zip(_xs, _ys):
+            predict_y = self._predict(x, train_w2c, train_t2c, emoticon=self._enable_test_emoticon)
+            if predict_y == y:
+                pred_cnt[y] += 1
+                cnt += 1
+            else:
+                ldebug('Predict Error-%s. Answer:%s. Predict:%s.' % (x, y, predict_y))
+        precision = 1.0 * sum(pred_cnt.values()) / len(_xs)
+        calls = [pred*1.0/tag_cnt for pred, tag_cnt in zip(pred_cnt.values(), test_t2c.values()) if tag_cnt]
+        if len(calls) != 2:
+            raise Exception("only byclass is supported now! but %s tags are given" % len(calls))
+        recall = sum(calls) / len(calls)
+        f_value = 2*precision*recall / (precision + recall)
+        print precision , recall, f_value
+        return precision, recall, f_value
 
     #predict test_data
     def _predict(self, txt, train_w2c, train_t2c, debug=False, emoticon=True):
         p_pos, p_neg = (0.0, 0.0)
-        if emoticon and 'emoticon' not in self._ngrams_config:
-            self._ngrams_config.append('emoticon')
-        elif not emoticon and 'emoticon' in self._ngrams_config:
-            self._ngrams_config = filter(lambda x: x != 'emoticon', self._ngrams_config)
+        #if emoticon and 'emoticon' not in self._ngrams_config:
+        #    self._ngrams_config.append('emoticon')
+        #elif not emoticon and 'emoticon' in self._ngrams_config:
+        #    self._ngrams_config = filter(lambda x: x != 'emoticon', self._ngrams_config)
         #grams = self._retrieve_feature(txt)
-        grams = ST.retrieve_feature(txt, feature_extract_config=self._ngrams_config)
+        grams = ST.retrieve_feature(txt, feature_extract_config=self._ngrams_config, gram_icon_mixed=emoticon)
         if debug:
             linfo('begin debug case: %s' % txt)
         for w in grams:
@@ -177,8 +209,8 @@ class NBClassifier(object):
         tag2cnt = {"P":0,"N":0,"O":0}
         for index in shard_indexs:
             #word_total_cnt += len(x)
-            txt = self._xs[index] 
-            tag = self._ys[index]
+            txt = self._train_xs[index] 
+            tag = self._train_ys[index]
             tag2cnt[tag] += 1
             bags = ST.retrieve_feature(txt, feature_extract_config=self._ngrams_config)
             for w in bags:
@@ -254,10 +286,10 @@ class NBClassifier(object):
             with open('rand_req', 'r') as f:
                 line = f.readline().strip()
                 rand_req = map(int, line.split(' '))
-                if len(rand_req) != len(self._xs):
+                if len(rand_req) != len(self._train_xs):
                     raise Exception('Load rand_req fail. wrong results. random sequence cnt: %s.' % len(rand_req))
         else:
-            rand_req =  [random.randint(1, shard_sz) for i in range(len(self._xs))]
+            rand_req =  [random.randint(1, shard_sz) for i in range(len(self._train_xs))]
         if save:
             ET.write_file('rand_req', 'w', '%s\n'%' '.join(map(str, rand_req)))
             
@@ -277,7 +309,7 @@ class NBClassifier(object):
 def main():
     #print dir(NBClassifier)
     #return
-    nb = NBClassifier('../stats/train_data')
+    nb = NBClassifier('../train_data/train_data')
     nb.train()
     #nb.predict()
     

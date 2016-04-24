@@ -33,20 +33,22 @@ class StatsTool(object):
 
     #feature config: unigram, bigram, trigram, emoticon
     @classmethod
-    def retrieve_feature(cls, txt, feature_extract_config=['unigram', 'emoticon'], feature_representation_config='presence'):
+    def retrieve_feature(cls, txt, gram_icon_mixed=True, feature_extract_config=['unigram'], feature_representation_config='presence'):
         if feature_representation_config not in ['presence', 'frequency']:
             raise Exception('feature representation ERROR. not supported type for %s' % feature_representation_config)
         bags = []
+        #depreciated
         if 'emoticon' in feature_extract_config:
             emoticons = cls._retrieve_emoticon(txt)
             for icon in emoticons:
                 bags.append(icon)
-        #txt = cls._remove_emoticon(txt)
+        if not gram_icon_mixed:
+            txt = cls._remove_emoticon(txt)
         for i, w in enumerate(txt):
             if 'unigram' in feature_extract_config:
                 if w not in bags:
                     bags.append(w)
-            if 'bigram' in feature_extract_config and i >= 1:
+            if 'bigram' in feature_extract_config and i >= 1: 
                 gram = '%s%s' % (txt[i-1], w)
                 if gram not in bags:
                     bags.append(gram)
