@@ -21,6 +21,7 @@ ldebug = logging.debug
 
 #10folder cross-validation-metric now(2, 3, 4 enabled): precision: 0.9617. recall: 0.9595.f-value:0.9606
 #cross valdation NO emoticon on test data set: precision: 0.7051. recall: 0.7037.f-value:0.7044
+#manually tagged data: precision: 0.7878. recall: 0.7856.f-value:0.7867
 
 #FAIL: salience, entropy strategy
 
@@ -144,18 +145,17 @@ class NBClassifier(object):
     def _batch_predict(self, _xs, _ys, train_w2c, train_t2c, test_t2c):
         pred_cnt = {"P":0,"N":0,"O":0}
         n_st = time.time()
-        cnt = 0
         for x, y in zip(_xs, _ys):
             predict_y = self._predict(x, train_w2c, train_t2c, emoticon=self._enable_test_emoticon)
             if predict_y == y:
                 pred_cnt[y] += 1
-                cnt += 1
             else:
                 ldebug('Predict Error-%s. Answer:%s. Predict:%s.' % (x, y, predict_y))
+        #linfo('Predict Success Cnt: %s/%s' % (sum(pred_cnt.values()), len(_xs)))
         precision = 1.0 * sum(pred_cnt.values()) / len(_xs)
         calls = [pred*1.0/tag_cnt for pred, tag_cnt in zip(pred_cnt.values(), test_t2c.values()) if tag_cnt]
         if len(calls) != 2:
-            raise Exception("only byclass is supported now! but %s tags are given" % len(calls))
+            raise Exception("only biclass is supported now! but %s tags are given" % len(calls))
         recall = sum(calls) / len(calls)
         f_value = 2*precision*recall / (precision + recall)
         print precision , recall, f_value

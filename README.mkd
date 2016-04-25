@@ -4,7 +4,7 @@
 
 ##Appication
 * Sentiment Pattern Recognition
-*  Abnormal Event Detection
+* Abnormal Event Detection
 * Real-time Sentiment Monitoring
 
 ##Train Data Source
@@ -13,3 +13,4 @@
 ##Algorithms
 1. NaiveBayes
 2. SVM
+3. LR
