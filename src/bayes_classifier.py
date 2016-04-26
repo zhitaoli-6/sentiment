@@ -76,7 +76,7 @@ class NBClassifier(object):
         print self._ngrams_config
         linfo('begin train classifier')
         st = time.time()
-        rid2shard = self._random_shardlize(shard_sz,load=True)
+        rid2shard = ST.random_shardlize(shard_sz, len(self._train_xs), load=True)
 
         #rid2word_info = {}
         #total_word2cnt = NBClassifier.Word2Cnt()
@@ -279,26 +279,6 @@ class NBClassifier(object):
                     if w in w2c:
                         del w2c[w]
 
-    def _random_shardlize(self, shard_sz, save=False, load=False):
-        if shard_sz <= 1:
-            raise Exception('unvalid shard_sz for cross validation')
-        if load:
-            with open('rand_req', 'r') as f:
-                line = f.readline().strip()
-                rand_req = map(int, line.split(' '))
-                if len(rand_req) != len(self._train_xs):
-                    raise Exception('Load rand_req fail. wrong results. random sequence cnt: %s.' % len(rand_req))
-        else:
-            rand_req =  [random.randint(1, shard_sz) for i in range(len(self._train_xs))]
-        if save:
-            ET.write_file('rand_req', 'w', '%s\n'%' '.join(map(str, rand_req)))
-            
-        rid2shard = {}
-        for i, rid in enumerate(rand_req):
-            rid2shard.setdefault(rid, [])
-            rid2shard[rid].append(i)
-        return rid2shard
-    
     def _debug_bigram(self, word2cnt):
         for tag, w2c in word2cnt.items():
             bigram = filter(lambda x: len(x) == 2, w2c.keys())

@@ -9,6 +9,7 @@ Currently, **features with unigram and bigram mixed** lead to best performance m
 1. NaiveBayes 78.8% (386/490) (mixed)
 2. SVM **86.1224%** (422/490) (mixed, parameter description: c: 0.0004, B: 1)
 3. LR 82.6531% (405/490) (mixed, B: 1)
+4. Max Entropy 88.37% (Iteration: 4)
 
 
 
