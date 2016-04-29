@@ -1,15 +1,20 @@
 #Sentiment Analysis METRIC
 ##Feature Extraction 
-Currently, **features with unigram and bigram mixed** lead to best performance measured with precision for cross validation and manually tagged data set.
+Currently, features with **unigram and bigram mixed** bring the best performance in general measured with precision when cross validation and manually tagged data set.
 
 ##Test Data Description
 **490** stats manually tagged, of which 257 are POSITIVE, 233 are Negative.
 
-##Algorithms (only biclasses are supported now)
-1. NaiveBayes 78.8% (386/490) (mixed)
-2. SVM **86.1224%** (422/490) (mixed, parameter description: c: 0.0004, B: 1)
-3. LR 82.6531% (405/490) (mixed, B: 1)
-4. Max Entropy 88.37% (Iteration: 4)
+##Algorithms Metric (bi classes)
+1. NaiveBayes 78.8% (386/490) (mixed, 10-cross: > 96%(with icons) 70.51%(without icons))
+2. SVM 86.1224% (422/490) (mixed, parameter description: c: 0.0004, B: 1. 5-cross: 98%(with icons). 74.8%(no icons))
+3. LR 82.6531% (405/490) (mixed, B: 1.  5-cross: 98%(with icons). 76.63%(no icons))
+4. Max Entropy **88.37%** (Only unigram, Iteration: 4.)
 
 
+##Algorithms Metric (tri classes)
+1. NaiveBayes  10-cross: 88.45%(with emoicons) 71.88% (no icons) *test*
+2. SVM 5-cross: 99.9714%(with icons) 82.1212% (no icons) *test*
+3. LR: 99.9818%(with icons) 83.6106% (no icons) *test*
+4. Max Entropy *test*
 

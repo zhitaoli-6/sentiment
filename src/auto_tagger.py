@@ -13,14 +13,13 @@ linfo = logging.info
 ldebug = logging.debug
 
 TAGS  = ['P', 'N', 'O']
-def auto_tag(in_path='../stats/test_public_stats', out_path='../test_data/test_data', tag_log='tagger.log'):
+def auto_tag(in_path='../stats/test_public_stats', out_path='../test_data/objective_test_data', tag_log='tagger.log'):
     start_line = 0
     if os.path.exists(tag_log):
         with open(tag_log, 'r') as f:
             line = f.readline()
             start_line = int(line)
     linfo('st_line: %s' % start_line)
-
 
     with open(in_path, 'r') as f:
         print 'please tag following states with "P:Positive", "N:Negative", "O:Objective"'
@@ -46,7 +45,7 @@ def auto_tag(in_path='../stats/test_public_stats', out_path='../test_data/test_d
                 print 'ignore this state'
 
 #following is for check and statisticize test_data of auto_tag.
-def auto_tag_check(in_path='../test_data/test_data', out_path='../test_data/test_data_final', tag_log='tagger_check.log'):
+def auto_tag_check(in_path='../test_data/objective_test_data', out_path='../test_data/objective_test_data_final', tag_log='tagger_check.log'):
     start_line = 0
     if os.path.exists(tag_log):
         with open(tag_log, 'r') as f:
@@ -78,7 +77,7 @@ def auto_tag_check(in_path='../test_data/test_data', out_path='../test_data/test
             else:
                 print 'ignore this state'
     
-def visual_test(in_path='../test_data/test_data', out_path='../test_data/visual_data'):
+def visual_test(in_path='../test_data/objective_test_data', out_path='../test_data/visual_data'):
     if os.path.exists(out_path):
         os.system('rm %s' % out_path)
     #pp, nn = [], []
@@ -98,11 +97,11 @@ def visual_test(in_path='../test_data/test_data', out_path='../test_data/visual_
     for line in lines:
         ET.write_file(out_path, 'a', line)
     
-    
 
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)
     logging.info('---------------------------\nbegin supervise tagger')
+    #auto_tag()
     #auto_tag_check()
     visual_test()
     logging.info('end')

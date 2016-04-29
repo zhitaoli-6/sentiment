@@ -2,10 +2,10 @@
 #!/usr/bin/env python 
 import sys, os
 import json, logging, time, copy, random, math
+from easy_tool import EasyTool as ET
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
 
 linfo = logging.info
 ldebug = logging.debug
@@ -134,19 +134,19 @@ class StatsTool(object):
         
 
     @classmethod
-    def random_shardlize(cls, shard_sz, rand_cnt, save=False, load=False):
+    def random_shardlize(cls, shard_sz, rand_cnt, path='rand_req', save=False, load=False):
         if shard_sz <= 1:
             raise Exception('unvalid shard_sz for cross validation')
         if load:
-            with open('rand_req', 'r') as f:
+            with open(path, 'r') as f:
                 line = f.readline().strip()
                 rand_req = map(int, line.split(' '))
                 if len(rand_req) != rand_cnt:
                     raise Exception('Load rand_req fail. wrong results')
         else:
-            rand_req =  [random.randint(1, shard_sz) for i in range(len(rand_cnt))]
+            rand_req =  [random.randint(1, shard_sz) for i in range(rand_cnt)]
         if save:
-            ET.write_file('rand_req', 'w', '%s\n'%' '.join(map(str, rand_req)))
+            ET.write_file(path, 'w', '%s\n'%' '.join(map(str, rand_req)))
             
         rid2shard = {}
         for i, rid in enumerate(rand_req):

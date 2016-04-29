@@ -11,6 +11,5 @@
 * Weibo API
 
 ##Algorithms
-1. NaiveBayes
-2. SVM
-3. LR
+1. Statistics Based Machine Learning: Bayes, SVM, LR, Maxent
+2. Neural Netword Based: LSTM

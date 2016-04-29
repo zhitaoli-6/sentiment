@@ -1,12 +1,21 @@
 #encoding=utf-8
 #!/usr/bin/env python
+
 import sys, json, logging, time, os, copy
 
-from tool import EasyTool as ET
+from easy_tool import EasyTool as ET
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
+linfo = logging.info
+ldebug = logging.debug
+lexcept = logging.exception
+write = ET.write_file
 
 def load_stats(in_path='stats/public_stats',out_path='stats/simple_public_stats'):
+    '''
+    Load public states and visualise
+    '''
     lines = []
     with open(in_path, 'r') as f:
         for line in f:
@@ -17,6 +26,9 @@ def load_stats(in_path='stats/public_stats',out_path='stats/simple_public_stats'
     print 'cnt of lines: %s' % len(lines)
 
 def parse_stats_emoticon(in_path='stats/public_stats', out_path='stats/emoticon_statistics'):
+    '''
+    Study emoticon info from public states
+    '''
     st = time.time()
     icon2cnt = {}
     total_cnt, icon_line_cnt = (0, 0)
@@ -46,6 +58,9 @@ def parse_stats_emoticon(in_path='stats/public_stats', out_path='stats/emoticon_
         write(out_path, 'a', '%s:%s\n' % (icon, cnt))
 
 def load_emoticon(in_path='stats/emoticon_selected'):
+    '''
+    Load selected emoticon
+    '''
     pos_icons, neg_icons = [], []
     with open(in_path, 'r') as f:
         pos_flag = True
@@ -63,6 +78,10 @@ def load_emoticon(in_path='stats/emoticon_selected'):
 
 excludes = ['#']
 def parse_emoticon_stats(in_path='stats/public_stats', out_path='stats/visual_train_data'):
+    '''
+    Parse states with selected emocicons.
+    Dumps or visualise
+    '''
     st = time.time()
     pos_icons, neg_icons = load_emoticon()
 
@@ -111,13 +130,29 @@ def parse_emoticon_stats(in_path='stats/public_stats', out_path='stats/visual_tr
             #else:
             #    write(out_path, 'a', 'N%s\n' % stat)
 
+def load_news(news_path=['/home/lizhitao/repos/spider/data/cankao_records', '/home/lizhitao/repos/spider/data/people_news_records'], merge_path='../train_data/tri_train_data'):
+    news = set()
+    st = time.time()
+    for path in news_path:
+        with open(path, 'r') as f:
+            for line in f:
+                tks = line.strip().split(',')
+                if not tks:
+                    continue
+                news.add(tks[0])
+    linfo('new cnt: %s. time used: %.2f' % (len(news), time.time() - st))
+    for new in news:
+        dic = {'O':new}
+        write(merge_path,'a','%s\n' % json.dumps(dic))
+
 def main():
     #load_stats()
     #parse_stats_emoticon()
-    parse_emoticon_stats()
+    #parse_emoticon_stats()
+    load_news()
     
 if __name__ == '__main__':
-    #logging.basicConfig(filename='/home/lizhitao/log/sentiment_public_states_retriever.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)
-    #logging.info('begin supervise public states retriever')
+    logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)
+    logging.info('begin supervise')
     main()
-    #logging.info('end')
+    logging.info('end')

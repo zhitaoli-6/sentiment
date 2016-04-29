@@ -19,15 +19,26 @@ class LinearModelInputHelper(object):
     def __init__(self, _path):
         self._path = _path
         self._train_xs, self._train_ys = ST.load_data(self._path)
+
         self._feature_extract_config = ['unigram', 'bigram']
         linfo('feature extract config: %s' % self._feature_extract_config)
+        
+        self.tag2index = {}
+        self._discret(self._train_ys)
 
-    def test(self, test_path='../test_data/test_data'):
+    def _discret(self, ys):
+        for i in range(len(ys)):
+            if ys[i] not in self.tag2index:
+                self.tag2index[ys[i]] = len(self.tag2index)
+            ys[i] = self.tag2index[ys[i]]
+
+    def test(self, test_path='../test_data/tri_test_data'):
         self._test_xs, self._test_ys = ST.load_data(test_path)
-        self.format_sparse(self._test_xs, self._test_ys, '../test_data/sparse_test_data')
+        self._discret(self._test_ys)
+        self.format_sparse(self._test_xs, self._test_ys, '../test_data/tri_sparse_test_data')
 
-    def train(self):
-        self.format_sparse(self._train_xs, self._train_ys, '../train_data/sparse_train_data')
+    def train(self, emoticon=True):
+        self.format_sparse(self._train_xs, self._train_ys, '../train_data/tri_sparse_train_data_uni_bi',emoticon=emoticon)
 
     def format_sparse(self,_xs, _ys, out_path, emoticon=True):
         if os.path.exists(out_path):
@@ -41,7 +52,7 @@ class LinearModelInputHelper(object):
             wids = set(wids)
             wids = sorted([x for x in wids])
             features = ['%s:%s' % (wid, 1) for wid in wids]
-            line = '%s %s' % ('+1' if tag == 'P' else '-1', ' '.join(features))
+            line = '%s %s' % (tag, ' '.join(features))
             ET.write_file(out_path, 'a', '%s\n' % line)
 
     def _extract_feature(self, word2cnt_path=None, cnt_threshold=10):
@@ -77,11 +88,11 @@ class LinearModelInputHelper(object):
 
 def main():
     #print dir(WorkClassifier)
-    obj = LinearModelInputHelper('../train_data/train_data')
+    obj = LinearModelInputHelper('../train_data/tri_train_data')
     #obj._extract_feature()
     #obj.debug()
-    #self.train()
-    obj.test()
+    obj.train(emoticon=True)
+    #obj.test()
     
     
 if __name__ == '__main__':

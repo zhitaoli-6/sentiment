@@ -27,6 +27,15 @@ ldebug = logging.debug
 
 #bug: emoticon. see file named 'case'
 
+cc = 'tri'
+#cc = 'bi'
+#cc = sys.argv[1]
+
+train_data = '../train_data/%s_train_data' % cc
+test_data = '../test_data/%s_test_data' % cc
+rand_path = 'rand/%s_rand_req' % cc 
+
+
 class NBClassifier(object):
     '''
     Naive Bayes Model. Feature: unigram-bigram mixed
@@ -37,30 +46,24 @@ class NBClassifier(object):
             #P:positive, N: negative, O: objective
             self["P"] = {}
             self["N"] = {}
+            self["O"] = {}
 
     def __init__(self, train_data_path, **kwargs):
         self._train_path = train_data_path
         config = ['unigram', 'bigram', 'trigram', 'emoticon']
 
+        '''
+        ngrams_config: for feature extraction
+        test_emoticon: to test emoticon influence
+        '''
         self._ngrams_config = [config[0], config[1]]
-        self._enable_test_emoticon = True 
+        self._enable_test_emoticon = True
 
         linfo('train feature extraction: %s' % self._ngrams_config)
         linfo('test emoticon: %s' % self._enable_test_emoticon)
-        self._test_path = '../test_data/test_data'
-        
+        self._test_path = test_data
 
-    def predict(self):
-        cases = []
-        with open('case', 'r') as f:
-            for line in f:
-                case = unicode(line.strip(), 'utf-8')
-                cases.append(case)
-        for case in cases:
-            print 'Begin Debug bad case:%s' % case
-            print self._predict(case, self.total_w2c, self.total_t2c, debug=True)
-
-    def train(self):
+    def train(self, icon=True, cross=True):
         #word2cnt = NBClassifier.Word2Cnt()
         
         #txt = '今天天气就是棒[哈哈] [太阳] [飞起来]#'
@@ -69,14 +72,15 @@ class NBClassifier(object):
         #self._replace_url(fill=True)
         self._train_xs, self._train_ys = ST.load_data(self._train_path)
         ST.replace_url(self._train_xs, fill=True)
-        #ST.remove_emoticon(self._train_xs)
-        self._train(cross_validation=False)
+        if not icon:
+            ST.remove_emoticon(self._train_xs)
+        self._train(cross_validation=cross)
 
     def _train(self, shard_sz=10, cross_validation=True):
         print self._ngrams_config
         linfo('begin train classifier')
         st = time.time()
-        rid2shard = ST.random_shardlize(shard_sz, len(self._train_xs), load=True)
+        rid2shard = ST.random_shardlize(shard_sz, len(self._train_xs), load=True, path=rand_path)
 
         #rid2word_info = {}
         #total_word2cnt = NBClassifier.Word2Cnt()
@@ -100,6 +104,7 @@ class NBClassifier(object):
         #self._debug_bigram(total_word2presence)
         self._prune(total_word2presence, rid2word_presence, total_tag2cnt)
         self.total_w2c, self.total_t2c = total_word2presence, total_tag2cnt
+        linfo(self.total_t2c)
         #cross_validation
         if cross_validation:
             linfo('beign cross validation')
@@ -113,6 +118,7 @@ class NBClassifier(object):
     def _cross_train(self, total_word2cnt, rid2word_info, total_tag2cnt, rid2tag_cnt, shard_sz, rid2shard):
         p, r, f = 0, 0, 0
         for rid in range(1, shard_sz+1):
+            n_st = time.time()
             test_sd = rid2shard[rid] 
             train_w2c,train_t2c  = total_word2cnt, total_tag2cnt
             test_w2c, test_t2c  = rid2word_info[rid], rid2tag_cnt[rid]
@@ -124,7 +130,7 @@ class NBClassifier(object):
             r += tr
             f += tf
             self._reset_total_info(test_w2c, test_t2c, train_w2c, train_t2c, True)
-            #linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f. time uses this round: %.2f' % (precision, recall, f_value, time.time() - n_st))
+            linfo('cross: precision: %.4f. recall: %.4f.f-value:%.4f. time uses this round: %.2f' % (tp, tr, tf, time.time() - n_st))
         return p/shard_sz, r/shard_sz, f/shard_sz
 
     def _all_train(self, total_word2cnt, total_tag2cnt):
@@ -154,8 +160,8 @@ class NBClassifier(object):
         #linfo('Predict Success Cnt: %s/%s' % (sum(pred_cnt.values()), len(_xs)))
         precision = 1.0 * sum(pred_cnt.values()) / len(_xs)
         calls = [pred*1.0/tag_cnt for pred, tag_cnt in zip(pred_cnt.values(), test_t2c.values()) if tag_cnt]
-        if len(calls) != 2:
-            raise Exception("only biclass is supported now! but %s tags are given" % len(calls))
+        #if len(calls) != 2:
+        #    raise Exception("only biclass is supported now! but %s tags are given" % len(calls))
         recall = sum(calls) / len(calls)
         f_value = 2*precision*recall / (precision + recall)
         print precision , recall, f_value
@@ -172,18 +178,18 @@ class NBClassifier(object):
         grams = ST.retrieve_feature(txt, feature_extract_config=self._ngrams_config, gram_icon_mixed=emoticon)
         if debug:
             linfo('begin debug case: %s' % txt)
+        tag2score = {"P":0,"N":0,"O":0}
         for w in grams:
-            p_gram_pos = self._cal_likelihood(train_w2c["P"].get(w, 0), train_t2c["P"]) 
-            p_pos += p_gram_pos 
-            if debug:
-                linfo('DEBUG probability for gram %s when given tag %s is: %.4f. gram cnt: %s.tag cnt: %s' % (w, 'P', p_gram_pos, train_w2c['P'].get(w, 0), train_t2c['P']))
-            p_gram_neg = self._cal_likelihood(train_w2c["N"].get(w, 0), train_t2c["N"])  
-            p_neg += p_gram_neg 
-            if debug:
-                linfo('DEBUG probability for gram %s when given tag %s is: %.4f. gram cnt: %s.tag cnt: %s' % (w, 'N', p_gram_neg, train_w2c['N'].get(w, 0), train_t2c['N']))
-        pred_tag = "P" if p_pos > p_neg else "N"
+            for tag in tag2score:
+                if not train_t2c[tag]:
+                    continue
+                score = self._cal_likelihood(train_w2c[tag].get(w, 0), train_t2c[tag]) 
+                tag2score[tag] += score
+                if debug:
+                    linfo('DEBUG probability for gram %s when given tag %s is: %.4f. gram cnt: %s.tag cnt: %s' % (w, tag, score, train_w2c[tag].get(w, 0), train_t2c[tag]))
+        pred_tag = sorted(tag2score.keys(), key=lambda x: tag2score[x], reverse=True)[0]
         if debug: 
-            linfo('predict tag: %s. p_pos: %.6f. p_neg: %.6f.' % (pred_tag, p_pos, p_neg))
+            linfo('predict tag2score: %s' % tag2score)
         return pred_tag
            
     def _cal_likelihood(self, word_cnt, tag_cnt):
@@ -289,10 +295,8 @@ class NBClassifier(object):
 def main():
     #print dir(NBClassifier)
     #return
-    nb = NBClassifier('../train_data/train_data')
-    nb.train()
-    #nb.predict()
-    
+    nb = NBClassifier(train_data)
+    nb.train(icon=True, cross=False)
     
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)
