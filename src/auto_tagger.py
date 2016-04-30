@@ -103,5 +103,8 @@ if __name__ == '__main__':
     logging.info('---------------------------\nbegin supervise tagger')
     #auto_tag()
     #auto_tag_check()
-    visual_test()
+    #visual_test()
+    while True:
+        print ET.format_time()
+        time.sleep(60)
     logging.info('end')

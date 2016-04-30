@@ -20,36 +20,65 @@ def create_client():
     return client
 
 class PublicStatRetriever(object):
-    def __init__(self, path):
+    '''
+        Online: analyse
+        Offline: download states data on local disk
+    '''
+    def __init__(self, path='UNKNOWN'):
         self.client = create_client()
         self.path = path
         self.total_cnt = 0
-        
-    def run(self, interval=10):
-        while True:
+
+    def online_run(self, interval=10, peroid=0.5, quiet=True):
+        stats = set()
+        now = peroid
+        cnt = 0
+        while now < interval:
             try:
-                self.retrieve()
+                rsp = self.retrieve('on', quiet=quiet)
+                cnt += 1
+                if rsp:
+                    for dic in rsp:
+                        stats.add(dic['text'])
             except Exception as e:
                 logging.exception(e)
-            logging.info('sleep for %smin...' % interval)
-            time.sleep(interval*60)
+            now += peroid
+            time.sleep(peroid*60)
+        linfo('online analysis %s new stats retrieved. retrieve cnt: %s' % (len(stats), cnt))
+        return stats
+
+    def offline_run(self, peroid=10):
+        while True:
+            try:
+                self.retrieve('off')
+            except Exception as e:
+                logging.exception(e)
+            logging.info('sleep for %smin...' % peroid)
+            time.sleep(peroid*60)
         
-    def retrieve(self):
-        linfo('-----------------')
-        linfo('begin retrieve once')
+    def retrieve(self, line, quiet=False):
+        if line not in ['on', 'off']:
+            raise Exception('INVALID PARAMETER IS GIVEN WHEN RETRIEVE STATES')
+        if not quiet:
+            linfo('-----------------')
+            linfo('begin retrieve once')
         paras = {'count':200}
         rsp = self.client.statuses.public_timeline.get(**paras)
         self.total_cnt += len(rsp.statuses)
-        linfo('retrieve items count: %s. total_cnt: %s' % (len(rsp.statuses), self.total_cnt))
+        if not quiet:
+            linfo('retrieve items count: %s. total_cnt: %s' % (len(rsp.statuses), self.total_cnt))
+        if line == 'on':
+            return rsp.statuses
         for dic in rsp.statuses:
             write(self.path, 'a', '%s\n' % json.dumps(dic))
+        return None
 
 def main():
     #paras = {'screen_name':'BrightestSirius', 'count':5, 'page':1}
     #rsp = client.statuses.user_timeline.get(screen_name=name)
     #rsp = client.statuses.home_timeline.get()
-    obj = PublicStatRetriever('../stats/test_public_stats')
-    obj.run(interval=0.5)
+    obj = PublicStatRetriever(path='../stats/test_public_stats')
+    obj.offline_run(peroid=0.5)
 
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment_public_states_retriever.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)

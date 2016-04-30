@@ -13,7 +13,6 @@ sys.setdefaultencoding('utf-8')
 linfo = logging.info
 ldebug = logging.debug
 
-
 #optimize: (1)laplace smoothing.
 
 #prune: (2)url replace,(3)remove words with too high and low frequency(low ability for classificaion), 
@@ -27,16 +26,7 @@ ldebug = logging.debug
 
 #bug: emoticon. see file named 'case'
 
-cc = 'tri'
-#cc = 'bi'
-#cc = sys.argv[1]
-
-train_data = '../train_data/%s_train_data' % cc
-test_data = '../test_data/%s_test_data' % cc
-rand_path = 'rand/%s_rand_req' % cc 
-
-
-class NBClassifier(object):
+class BayesClassifier(object):
     '''
     Naive Bayes Model. Feature: unigram-bigram mixed
     '''
@@ -48,9 +38,16 @@ class NBClassifier(object):
             self["N"] = {}
             self["O"] = {}
 
-    def __init__(self, train_data_path, **kwargs):
-        self._train_path = train_data_path
-        config = ['unigram', 'bigram', 'trigram', 'emoticon']
+    def __init__(self, classify_type='bi'):
+        cc = classify_type
+        if cc not in ['bi', 'tri']:
+            raise Exception('INVALID CLASSIFIER TYPE')
+        train_data = '../train_data/%s_train_data' % cc
+        test_data = '../test_data/%s_test_data' % cc
+        self.rand_path = 'rand/%s_rand_req' % cc 
+
+        self._train_path = train_data
+        config = ['unigram', 'bigram', 'trigram']
 
         '''
         ngrams_config: for feature extraction
@@ -59,12 +56,18 @@ class NBClassifier(object):
         self._ngrams_config = [config[0], config[1]]
         self._enable_test_emoticon = True
 
+        linfo('classify type: %s' % cc)
         linfo('train feature extraction: %s' % self._ngrams_config)
-        linfo('test emoticon: %s' % self._enable_test_emoticon)
+        linfo('test emoticon: %s. \nend init bayes classifier' % self._enable_test_emoticon)
         self._test_path = test_data
 
-    def train(self, icon=True, cross=True):
-        #word2cnt = NBClassifier.Word2Cnt()
+    def predict(self, txt):
+        if not hasattr(self, 'total_w2c') or not hasattr(self, 'total_t2c'):
+            raise Exception('NOT TRAINED CLASSFIER')
+        return self._predict(txt, self.total_w2c, self.total_t2c)
+
+    def train(self, icon=True, cross=False):
+        #word2cnt = BayesClassifier.Word2Cnt()
         
         #txt = '今天天气就是棒[哈哈] [太阳] [飞起来]#'
         #return
@@ -80,12 +83,12 @@ class NBClassifier(object):
         print self._ngrams_config
         linfo('begin train classifier')
         st = time.time()
-        rid2shard = ST.random_shardlize(shard_sz, len(self._train_xs), load=True, path=rand_path)
+        rid2shard = ST.random_shardlize(shard_sz, len(self._train_xs), load=True, path=self.rand_path)
 
         #rid2word_info = {}
-        #total_word2cnt = NBClassifier.Word2Cnt()
+        #total_word2cnt = BayesClassifier.Word2Cnt()
         rid2tag_cnt, rid2word_presence = {}, {}
-        total_word2presence = NBClassifier.Word2Cnt()
+        total_word2presence = BayesClassifier.Word2Cnt()
         total_tag2cnt = {"P":0,"N":0,"O":0}
         for rid in range(1, shard_sz+1):
             shard = rid2shard[rid]
@@ -169,7 +172,6 @@ class NBClassifier(object):
 
     #predict test_data
     def _predict(self, txt, train_w2c, train_t2c, debug=False, emoticon=True):
-        p_pos, p_neg = (0.0, 0.0)
         #if emoticon and 'emoticon' not in self._ngrams_config:
         #    self._ngrams_config.append('emoticon')
         #elif not emoticon and 'emoticon' in self._ngrams_config:
@@ -209,8 +211,8 @@ class NBClassifier(object):
                 total_t2c[tag] -= cnt
 
     def _cal_shard2info(self, shard_indexs):
-        #word2cnt = NBClassifier.Word2Cnt()
-        word2presence = NBClassifier.Word2Cnt() 
+        #word2cnt = BayesClassifier.Word2Cnt()
+        word2presence = BayesClassifier.Word2Cnt() 
         #word_total_cnt = 0
         tag2cnt = {"P":0,"N":0,"O":0}
         for index in shard_indexs:
@@ -293,9 +295,9 @@ class NBClassifier(object):
                     print 'tag: %s. gram: %s. cnt: %s' % (tag, gram, w2c[gram])
 
 def main():
-    #print dir(NBClassifier)
+    #print dir(BayesClassifier)
     #return
-    nb = NBClassifier(train_data)
+    nb = BayesClassifier()
     nb.train(icon=True, cross=False)
     
 if __name__ == '__main__':

@@ -18,23 +18,16 @@ class LinearModelInputHelper(object):
 
     def __init__(self, _path):
         self._path = _path
+        self.tag2index = {'P':0, 'O':1, 'N':2}
         self._train_xs, self._train_ys = ST.load_data(self._path)
+        self._train_ys = map(lambda x: self.tag2index[x], self._train_ys)
 
         self._feature_extract_config = ['unigram', 'bigram']
         linfo('feature extract config: %s' % self._feature_extract_config)
-        
-        self.tag2index = {}
-        self._discret(self._train_ys)
-
-    def _discret(self, ys):
-        for i in range(len(ys)):
-            if ys[i] not in self.tag2index:
-                self.tag2index[ys[i]] = len(self.tag2index)
-            ys[i] = self.tag2index[ys[i]]
 
     def test(self, test_path='../test_data/tri_test_data'):
         self._test_xs, self._test_ys = ST.load_data(test_path)
-        self._discret(self._test_ys)
+        self._test_ys = map(lambda x:self.tag2index[x], self._test_ys)
         self.format_sparse(self._test_xs, self._test_ys, '../test_data/tri_sparse_test_data')
 
     def train(self, emoticon=True):
@@ -91,8 +84,8 @@ def main():
     obj = LinearModelInputHelper('../train_data/tri_train_data')
     #obj._extract_feature()
     #obj.debug()
-    obj.train(emoticon=True)
-    #obj.test()
+    #obj.train(emoticon=True)
+    obj.test()
     
     
 if __name__ == '__main__':
