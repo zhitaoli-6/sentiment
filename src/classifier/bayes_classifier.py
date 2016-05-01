@@ -3,6 +3,7 @@
 import sys, os
 import json, logging, time, copy, random, math
 
+sys.path.append('/home/lizhitao/repos/sentiment/src')
 from easy_tool import EasyTool as ET
 from stats_tool import StatsTool as ST
 
@@ -42,9 +43,9 @@ class BayesClassifier(object):
         cc = classify_type
         if cc not in ['bi', 'tri']:
             raise Exception('INVALID CLASSIFIER TYPE')
-        train_data = '../train_data/%s_train_data' % cc
-        test_data = '../test_data/%s_test_data' % cc
-        self.rand_path = 'rand/%s_rand_req' % cc 
+        train_data = '../../train_data/%s_train_data' % cc
+        test_data = '../../test_data/%s_test_data' % cc
+        self.rand_path = '../rand/%s_rand_req' % cc 
 
         self._train_path = train_data
         config = ['unigram', 'bigram', 'trigram']

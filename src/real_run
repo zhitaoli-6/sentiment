@@ -2,9 +2,8 @@
 
 #exec python public_stats_retriever.py 1>> ~/log/std.log 2>>~/log/err.log &
 
-#exec python liblinear_helper.py 1>std.log 2>>~/log/err.log &
+exec python liblinear_helper.py 1>std.log 2>>~/log/err.log &
 
 #exec python maxent_classifier.py 1>>~/log/std.log 2>>~/log/err.log &
 #exec python bayes_classifier.py 1>std.log 2>>~/log/err.log &
-exec python online_analyser.py 1>std.log 2>>~/log/err.log &
 

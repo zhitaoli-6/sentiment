@@ -3,6 +3,7 @@
 import sys, os
 import json, logging, time, copy, random, math
 
+from const import TAG2INDEX
 from easy_tool import EasyTool as ET
 from stats_tool import StatsTool as ST
 reload(sys)
@@ -16,28 +17,35 @@ ldebug = logging.debug
 
 class LinearModelInputHelper(object):
 
-    def __init__(self, _path):
-        self._path = _path
-        self.tag2index = {'P':0, 'O':1, 'N':2}
+    def __init__(self, ct):
+        self._path = '../train_data/%s_train_data' % ct
+        if ct not in ['bi', 'tri']:
+            raise Exception('INVALID Classifier Type')
+        self.classifier_type = ct
+        self.tag2index = TAG2INDEX
         self._train_xs, self._train_ys = ST.load_data(self._path)
         self._train_ys = map(lambda x: self.tag2index[x], self._train_ys)
 
         self._feature_extract_config = ['unigram', 'bigram']
         linfo('feature extract config: %s' % self._feature_extract_config)
+        linfo('classifier type %s' % ct)
 
-    def test(self, test_path='../test_data/tri_test_data'):
+    def test(self, emoticon=True):
+        test_path='../test_data/%s_test_data' % self.classifier_type
         self._test_xs, self._test_ys = ST.load_data(test_path)
         self._test_ys = map(lambda x:self.tag2index[x], self._test_ys)
-        self.format_sparse(self._test_xs, self._test_ys, '../test_data/tri_sparse_test_data')
+        if not emoticon:
+            ST.remove_emoticon(self._train_xs)
+        self.format_sparse(self._test_xs, self._test_ys, '../test_data/%s_sparse_test_data_%s' % (self.classifier_type, 'icon' if emoticon else 'no_icon'))
 
     def train(self, emoticon=True):
-        self.format_sparse(self._train_xs, self._train_ys, '../train_data/tri_sparse_train_data_uni_bi',emoticon=emoticon)
+        if not emoticon:
+            ST.remove_emoticon(self._train_xs)
+        self.format_sparse(self._train_xs, self._train_ys, '../train_data/%s_sparse_train_data_uni_bi_%s' % (self.classifier_type, 'icon' if emoticon else 'no_icon'))
 
-    def format_sparse(self,_xs, _ys, out_path, emoticon=True):
+    def format_sparse(self,_xs, _ys, out_path):
         if os.path.exists(out_path):
             os.system('rm %s' % out_path)
-        if not emoticon:
-            ST.remove_emoticon(_xs)
         w2id = self._extract_feature()
         for txt, tag in zip(_xs, _ys):
             bags = ST.retrieve_feature(txt, feature_extract_config=self._feature_extract_config)
@@ -81,11 +89,11 @@ class LinearModelInputHelper(object):
 
 def main():
     #print dir(WorkClassifier)
-    obj = LinearModelInputHelper('../train_data/tri_train_data')
+    obj = LinearModelInputHelper('tri')
     #obj._extract_feature()
     #obj.debug()
-    #obj.train(emoticon=True)
-    obj.test()
+    #obj.train(emoticon=False)
+    obj.test(emoticon=False)
     
     
 if __name__ == '__main__':

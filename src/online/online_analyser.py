@@ -4,6 +4,7 @@ import sys, os, json
 import logging, time
 
 from easy_tool import EasyTool as ET
+sys.path.append('/home/lizhitao/repos/sentiment/src/classifier')
 
 from classifier import Classifier as CSF
 from public_stats_retriever import PublicStatRetriever as PSR
@@ -19,7 +20,7 @@ lexcept = logging.exception
 save = ET.write_file
 
 class SentimentAnalyser(object):
-    def __init__(self, path='online/tag_dist'):
+    def __init__(self, path='tag_dist'):
         self.csf = CSF()
         self.psr = PSR()
 
@@ -38,7 +39,7 @@ class SentimentAnalyser(object):
                     tag2cnt[tag] += 1
                 tag2dist =  {tag:cnt * 1.0 / len(stats) for tag,cnt in tag2cnt.items()}
                 linfo('round online sentiment distribution: %s' % tag2dist)
-                save(self.local_path, 'a', '%s\t%s\n' % (ET.format_time(time.localtime()), json.dumps(tag2dist)))
+                save(self.local_path, 'a', '%s\t%s\t%s\n' % (ET.format_time(time.localtime()), json.dumps(tag2dist), len(stats)))
             except Exception as e:
                 lexcept('Unknown exception %s' % e)
             
