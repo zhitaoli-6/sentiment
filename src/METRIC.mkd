@@ -14,7 +14,7 @@ Currently, features with **unigram and bigram mixed** bring the best performance
 
 ##Algorithms Metric (tri classes)
 1. NaiveBayes  10-cross: 88.45%(with emoicons) 71.88% (no icons) *test* 
-2. SVM 5-cross: 99.9714%(with icons) 82.1212% (no icons) *test* 64.0374% (479/748) 
-3. LR: 99.9818%(with icons) 83.6106% (no icons) *test* 65.107% (487/748)
+2. SVM 5-cross: 99.9714%(with icons) 82.1212% (no icons) *test* 73.9305% (553/748) 
+3. LR: 99.9818%(with icons) 83.6106% (no icons) *test* 75.5348% (565/748)
 4. Max Entropy *test*
 

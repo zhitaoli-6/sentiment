@@ -12,7 +12,7 @@ ldebug = logging.debug
 lexcept = logging.exception
 write = ET.write_file
 
-def load_stats(in_path='stats/public_stats',out_path='stats/simple_public_stats'):
+def visual_stats(in_path='stats/public_stats',out_path='stats/simple_public_stats'):
     '''
     Load public states and visualise
     '''
@@ -57,7 +57,7 @@ def parse_stats_emoticon(in_path='stats/public_stats', out_path='stats/emoticon_
         cnt = icon2cnt[icon]
         write(out_path, 'a', '%s:%s\n' % (icon, cnt))
 
-def load_emoticon(in_path='stats/emoticon_selected'):
+def load_emoticon(in_path='../stats/emoticon_selected'):
     '''
     Load selected emoticon
     '''
@@ -145,11 +145,34 @@ def load_news(news_path=['/home/lizhitao/repos/spider/data/cankao_records', '/ho
         dic = {'O':new}
         write(merge_path,'a','%s\n' % json.dumps(dic))
 
+objective_excludes = ['[', ']', '#', '!', '?', '？','！']
+objective_includes = ['【', '】', '空气质量指数']
+def parse_objective_stats(in_path='../stats/public_stats', out_path='../stats/objective_train_data'):
+    if os.path.exists(out_path):
+        os.system('rm %s' % out_path)
+    st = time.time()
+    cnt = 1
+    with open(in_path, 'r') as f:
+        for line in f:
+            dic = json.loads(line.strip())
+            txt = dic['text']
+            if any([x in txt for x in objective_excludes]):
+                continue
+            if any([x in txt for x in objective_includes]):
+                dic = {'O':txt}
+                ET.write_file(out_path, 'a', '%s\n' % json.dumps(dic))
+                cnt += 1
+            if cnt > 25000:
+                break
+    linfo('time used: %.2f. objective stats cnt: %s' % (time.time() - st, cnt))
+
+                
 def main():
-    #load_stats()
+    #visual_stats()
     #parse_stats_emoticon()
     #parse_emoticon_stats()
-    load_news()
+    #load_news()
+    parse_objective_stats()
     
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)

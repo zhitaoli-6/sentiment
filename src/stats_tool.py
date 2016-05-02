@@ -132,7 +132,13 @@ class StatsTool(object):
             ss.append(txt[ed:])
         return ''.join(ss)
         
-
+    @classmethod 
+    def remove_parenthesis(cls, _xs):
+        logging.info("begin remove parenthesis")
+        for i in range(len(_xs)):
+            _xs[i] = _xs[i].replace('【', ' ').replace('】', ' ')
+        logging.info("end remove parenthesis")
+    
     @classmethod
     def random_shardlize(cls, shard_sz, rand_cnt, path='rand_req', save=False, load=False):
         if shard_sz <= 1:

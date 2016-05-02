@@ -59,13 +59,20 @@ class BayesClassifier(object):
 
         linfo('classify type: %s' % cc)
         linfo('train feature extraction: %s' % self._ngrams_config)
-        linfo('test emoticon: %s. \nend init bayes classifier' % self._enable_test_emoticon)
+        linfo('test emoticon: %s.' % self._enable_test_emoticon)
         self._test_path = test_data
 
-    def predict(self, txt):
+    def predict(self, stats):
         if not hasattr(self, 'total_w2c') or not hasattr(self, 'total_t2c'):
             raise Exception('NOT TRAINED CLASSFIER')
-        return self._predict(txt, self.total_w2c, self.total_t2c)
+        if isinstance(stats, str):
+            stats = [stats]
+        if not isinstance(stats, list):
+            raise Exception('INVALID Parameter is given. %s' % stats)
+        if not stats:
+            return None
+        pred_tags = [self._predict(txt, self.total_w2c, self.total_t2c) for txt in stats]
+        return pred_tags
 
     def train(self, icon=True, cross=False):
         #word2cnt = BayesClassifier.Word2Cnt()
@@ -81,7 +88,7 @@ class BayesClassifier(object):
         self._train(cross_validation=cross)
 
     def _train(self, shard_sz=10, cross_validation=True):
-        print self._ngrams_config
+        #print self._ngrams_config
         linfo('begin train classifier')
         st = time.time()
         rid2shard = ST.random_shardlize(shard_sz, len(self._train_xs), load=True, path=self.rand_path)
@@ -148,7 +155,7 @@ class BayesClassifier(object):
             if y not in test_t2c:
                 raise Exception('Key Error in tag2cnt. unknown key: %s' % y)
             test_t2c[y] += 1
-        print test_t2c
+        #print test_t2c
         return  self._batch_predict(test_xs, test_ys, total_word2cnt, total_tag2cnt, test_t2c)
         
  
@@ -168,7 +175,7 @@ class BayesClassifier(object):
         #    raise Exception("only biclass is supported now! but %s tags are given" % len(calls))
         recall = sum(calls) / len(calls)
         f_value = 2*precision*recall / (precision + recall)
-        print precision , recall, f_value
+        #print precision , recall, f_value
         return precision, recall, f_value
 
     #predict test_data
