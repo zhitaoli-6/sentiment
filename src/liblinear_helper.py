@@ -1,4 +1,5 @@
-#encoding=utf-8 #!/usr/bin/env python 
+#encoding=utf-8 
+#!/usr/bin/env python 
 import sys, os
 import json, logging, time, copy, random, math
 
@@ -16,7 +17,6 @@ ldebug = logging.debug
 
 class LinearModelInputHelper(object):
     def __init__(self, ct='tri'):
-        linfo('begin init LinearModelHelper----')
         self._path = '%s/train_data/%s_train_data' % (project_dir, ct)
         if ct not in ['bi', 'tri']:
             raise Exception('INVALID Classifier Type')
@@ -28,7 +28,7 @@ class LinearModelInputHelper(object):
         self._feature_extract_config = ['unigram', 'bigram']
         linfo('feature extract config: %s' % self._feature_extract_config)
         linfo('classifier type %s' % ct)
-        linfo('end init LinearModelHelper----')
+        linfo('init %s success' % self)
 
     def train_discret_model(self, **config):
         linfo('begin train helper discret model')
@@ -110,6 +110,9 @@ class LinearModelInputHelper(object):
 
     def get_sparse_feature(self, txt):
         return  self.discret_feature(self.get_feature(txt))
+
+    def __str__(self):
+        return '[%s]' % LinearModelInputHelper.__name__
 
     def debug(self):
         ws_1 = set(self.batch_extract_feature().keys())

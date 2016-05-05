@@ -30,7 +30,8 @@ class PublicStatRetriever(object):
         self.total_cnt = 0
 
     def online_run(self, interval=10, peroid=0.5, quiet=True):
-        stats = set()
+        stats_set = set()
+        stats = []
         now = peroid
         cnt = 0
         while now < interval:
@@ -39,7 +40,9 @@ class PublicStatRetriever(object):
                 cnt += 1
                 if rsp:
                     for dic in rsp:
-                        stats.add(dic['text'])
+                        if dic['text'] not in stats_set:
+                            stats.append(dic['text'])
+                            stats_set.add(dic['text'])
             except Exception as e:
                 logging.exception(e)
             now += peroid

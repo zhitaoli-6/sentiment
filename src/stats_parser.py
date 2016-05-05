@@ -130,14 +130,14 @@ def parse_emoticon_stats(in_path='stats/public_stats', out_path='stats/visual_tr
             #else:
             #    write(out_path, 'a', 'N%s\n' % stat)
 
-def load_news(news_path=['/home/lizhitao/repos/spider/data/cankao_records', '/home/lizhitao/repos/spider/data/people_news_records'], merge_path='../train_data/tri_train_data'):
+def load_news(news_path=['/home/lizhitao/repos/spider/data/cankao_records', '/home/lizhitao/repos/spider/data/people_news_records'], merge_path='../train_data/news_train_data'):
     news = set()
     st = time.time()
     for path in news_path:
         with open(path, 'r') as f:
             for line in f:
                 tks = line.strip().split(',')
-                if not tks:
+                if not tks or not tks[0]:
                     continue
                 news.add(tks[0])
     linfo('new cnt: %s. time used: %.2f' % (len(news), time.time() - st))
@@ -171,8 +171,8 @@ def main():
     #visual_stats()
     #parse_stats_emoticon()
     #parse_emoticon_stats()
-    #load_news()
-    parse_objective_stats()
+    load_news()
+    #parse_objective_stats()
     
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)

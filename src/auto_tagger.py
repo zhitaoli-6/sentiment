@@ -77,7 +77,7 @@ def auto_tag_check(in_path='../test_data/objective_test_data', out_path='../test
             else:
                 print 'ignore this state'
     
-def visual_test(in_path='../test_data/objective_test_data', out_path='../test_data/visual_data'):
+def visual_test(in_path='../test_data/tri_test_data', out_path='../test_data/tri_visual_data'):
     if os.path.exists(out_path):
         os.system('rm %s' % out_path)
     #pp, nn = [], []
@@ -86,7 +86,7 @@ def visual_test(in_path='../test_data/objective_test_data', out_path='../test_da
         for line in f:
             dic = json.loads(line.strip())
             tag, txt = dic.items()[0]
-            new_line = '%s%s\n'  % (tag, txt)
+            new_line = '%s -%s\n'  % (tag, txt)
             lines.append(new_line)
             #ET.write_file(out_path, 'a', new_line)
             #if tag == 'P':
@@ -103,8 +103,5 @@ if __name__ == '__main__':
     logging.info('---------------------------\nbegin supervise tagger')
     #auto_tag()
     #auto_tag_check()
-    #visual_test()
-    while True:
-        print ET.format_time()
-        time.sleep(60)
+    visual_test()
     logging.info('end')
