@@ -166,13 +166,93 @@ def parse_objective_stats(in_path='../stats/public_stats', out_path='../stats/ob
                 break
     linfo('time used: %.2f. objective stats cnt: %s' % (time.time() - st, cnt))
 
-                
+def parse_topic_public_stats(in_path='../stats/train_public_stats',out_path='../test_data/topic_test_data'):
+    st_t = time.time()
+    topic_cnt, total_cnt = 0, 0
+    topic2txt = {}
+    with open(in_path, 'r') as f:
+        for line in f:
+            total_cnt += 1
+            dic = json.loads(line.strip())
+            txt = dic['text']
+            st_i = txt.find('#')
+            if st_i != -1:
+                ed_i = txt[st_i+1:].find('#')
+                if ed_i != -1:
+                    topic_cnt += 1
+                    topic = txt[st_i : st_i + 1 + ed_i + 1]
+                    topic2txt.setdefault(topic, list())
+                    topic2txt[topic].append(txt)
+    topics = sorted(topic2txt.keys(), key=lambda x: len(topic2txt[x]), reverse=True)
+    for t in topics:
+        txts = topic2txt[t]
+        if len(txts) > 7000:
+            continue
+        #print t, topic2txt[t]
+        if len(txts) < 200:
+            break
+        for txt in txts:
+            dic = {t:txt}
+            ET.write_file(out_path, 'a', '%s\n' % json.dumps(dic))
+        
+    print 'total cnt: %s. topic stats cnt: %s' % (total_cnt, topic_cnt)
+    print 'topic cnt: %s' % len(topic2txt)
+    print 'time used: %.2f' % (time.time() - st_t)
+
+
+speical_province = set([u'北京', u'上海', u'重庆',u'天津', u'台湾', u'澳门', u'香港'])
+def parse_city_public_stats(in_path='../stats/train_public_stats', out_path='../test_data/city_test_data'):
+    st_t = time.time()
+    city2txt = {}
+    city_stat_cnt, total_cnt = 0, 0
+    stat_ids = set()
+    txts_upperbound = 1000
+    with open(in_path, 'r') as f:
+        for line in f:
+            total_cnt += 1
+            dic = json.loads(line.strip()) 
+            if dic['id'] in stat_ids:
+                continue
+            else:
+                stat_ids.add(dic['id'])
+            if 'user' in dic and 'location' in dic['user']:
+                city_stat_cnt += 1
+                locs = dic['user']['location'].split(' ') 
+                p = locs[0]
+                city = None
+                if p in speical_province:
+                    city = p
+                elif len(locs) > 1:
+                    city =  dic['user']['location']
+                if not city:
+                    continue
+                city2txt.setdefault(city, list())
+                if len(city2txt[city]) >= txts_upperbound:
+                    continue
+                city2txt[city].append(dic['text'])
+    locs = sorted(city2txt.keys(), key=lambda x: len(city2txt[x]), reverse=True)
+    print 'city cnt', len(city2txt)
+    print 'city_stat_cnt', city_stat_cnt
+    print 'total_cnt', total_cnt
+    print 'time used: %.2f' % (time.time() - st_t)
+    citys = sorted(city2txt.keys())
+    #for x in citys:
+    #    print x, len(city2txt[x])
+    if os.path.exists(out_path):
+        os.system('rm %s' % out_path)
+    for x in locs:
+        for txt in city2txt[x]:
+            dic={x:txt}
+            ET.write_file(out_path, 'a', '%s\n' % json.dumps(dic))
+
 def main():
     #visual_stats()
     #parse_stats_emoticon()
     #parse_emoticon_stats()
-    load_news()
+    #load_news()
     #parse_objective_stats()
+    #parse_topic_public_stats()
+    parse_city_public_stats()
     
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)
