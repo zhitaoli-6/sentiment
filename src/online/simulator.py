@@ -5,7 +5,9 @@ import logging, time
 
 from easy_tool import EasyTool as ET
 sys.path.append('/home/lizhitao/repos/sentiment/src/classifier')
+sys.path.append('/home/lizhitao/repos/sentiment/src')
 
+from stats_tool import StatsTool as ST
 from classifier import Classifier as CSF
 from public_stats_retriever import PublicStatRetriever as PSR
 
@@ -19,6 +21,7 @@ lexcept = logging.exception
 save = ET.write_file
 
 stats_predict_detail_prefix = 'stats_simulate/'
+
 class Simulator(object):
     def __init__(self, names):
         self.stats_dir = '/home/lizhitao/repos/sentiment/src/online/%s' % sys.argv[1]
@@ -36,6 +39,11 @@ class Simulator(object):
         for name, stat in self.stats:
             try:
                 for clf, path in self.classifiers:
+                    linfo('----------roundly predict start-----------')
+                    raw_stat, stat = ST.preprocess(stat)
+                    union = [(raw,new) for raw, new in zip(raw_stat, stat) if new]
+                    raw_stat = map(lambda x:x[0], union)
+                    stat = map(lambda x:x[1], union)
                     pred_tags = clf.predict(stat)
                     if not pred_tags or len(pred_tags) != len(stat):
                         raise Exception('Predict Results Exception')
@@ -46,15 +54,15 @@ class Simulator(object):
                         detail_path = '%s%s' % (stats_predict_detail_prefix, name)
                         if os.path.exists(detail_path):
                             os.system('rm %s' % detail_path)
-                        for tag, txt in zip(pred_tags, stat):
+                        for tag, txt in zip(pred_tags, raw_stat):
                             ET.write_file(detail_path, 'a', '%s -%s\n' % (tag, txt))
                             #print tag, '-%s' % txt
+                    linfo('----------roundly predict end-----------')
             except Exception as e:
                 lexcept('Unknown exception %s' % e)
 
     def debug_topic_public_stats(self, detail=False):
         #print '--------------------------------------'
-        #topic2txt = self.parse_topics_realtime()
         topic2txt = self.parse_topics_test_data()
 
         topics = sorted(topic2txt.keys(), key=lambda x: len(topic2txt[x]), reverse=True)
@@ -88,6 +96,7 @@ class Simulator(object):
 
     def debug_city_public_stats(self, detail=False):
         city2txt = self.parse_citys_test_data()
+        return
         out_path = 'city_test_tag_dist_format'
         self.train()
         for tp in city2txt:
@@ -99,7 +108,7 @@ class Simulator(object):
                 tag2dist = self.cal_tag_dist(pred_tags)
                 ET.write_file(out_path, 'a', '%s,%s,%.4f,%.4f,%.4f\n' % (tp, len(txts), tag2dist['O'], tag2dist['P'], tag2dist['N']))
                 if detail:
-                    detail_path = 'topic_test_simulate'
+                    detail_path = 'city_test_simulate'
                     for tag, txt in zip(pred_tags, txts):
                         ET.write_file(detail_path, 'a', '%s -%s\n' % (tag, txt))
 
@@ -120,14 +129,12 @@ class Simulator(object):
         for name, txts in self.stats:
             for txt in txts:
                 total_cnt += 1
-                st_i = txt.find('#')
-                if st_i != -1:
-                    ed_i = txt[st_i+1:].find('#')
-                    if ed_i != -1:
-                        topic_cnt += 1
-                        topic = txt[st_i : st_i + 1 + ed_i + 1]
-                        topic2txt.setdefault(topic, set())
-                        topic2txt[topic].add(txt)
+                topic = ST.parse_topic(txt)
+                if not topic:
+                    continue
+                topic_cnt += 1
+                topic2txt.setdefault(topic, list())
+                topic2txt[topic].append(txt)
         print 'total cnt: %s. topic stats cnt: %s' % (total_cnt, topic_cnt)
         print 'topic cnt: %s' % len(topic2txt)
         return topic2txt
@@ -158,8 +165,8 @@ class Simulator(object):
         total_cnt = len(city2txt)
         city2txt = {c:txt for c, txt in city2txt.items() if len(txt) > 500}
         linfo('func parse_city_test_data-city found: %s. stats count greater than threshold: %s' % (total_cnt, len(city2txt)))
-        #for city, txts in city2txt.items():
-            #print city, len(txts)
+        for city, txts in city2txt.items():
+            print city, len(txts)
         return city2txt
 
             
@@ -167,7 +174,7 @@ class Simulator(object):
         linfo('load files from dir %s' % self.stats_dir)
         files = [name for name in os.listdir(self.stats_dir) if os.path.isfile(os.path.join(self.stats_dir, name))]
         files = sorted(files)
-        #files = filter(lambda x: x > 'tmp_20160505', files)
+        files = filter(lambda x: x > 'realtime_2016052620' and x < 'realtime_2016052714', files)
         linfo('stats files cnt: %s' % (len(files)))
         excludes = ['#', '【', '】']
         stats = []
@@ -186,9 +193,9 @@ class Simulator(object):
 
 def main():
     obj = Simulator(['svm'])
-    #obj.run(detail=True)
+    obj.run(detail=True)
     #obj.debug_topic_public_stats(detail=True)
-    obj.debug_city_public_stats()
+    #obj.debug_city_public_stats()
 
 if __name__ == '__main__':
     log_name = 'simulator.log'

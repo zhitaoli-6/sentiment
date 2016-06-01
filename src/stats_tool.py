@@ -3,6 +3,7 @@
 import sys, os
 import json, logging, time, copy, random, math
 from easy_tool import EasyTool as ET
+from const import speical_province
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -16,6 +17,7 @@ class StatsTool(object):
     
     @staticmethod
     def load_data(in_path):
+        linfo('load data from %s' % in_path)
         _ys, _xs = [], []
         st = time.time()
         with open(in_path, 'r') as f:
@@ -59,8 +61,7 @@ class StatsTool(object):
         return bags if feature_representation_config == 'frequency' else set(bags) 
  
     @classmethod
-    def replace_url(cls, _xs, fill=True):
-        #URL replaced as '#'
+    def replace_url(cls, _xs, fill):
         linfo('begin replace url')
         urls = []
         for i, txt in enumerate(_xs):
@@ -71,8 +72,7 @@ class StatsTool(object):
                     txt = txt[ed:]
                     st = txt.find('http')
                     ss.append('%s' % txt[:st])
-                    if fill:
-                        ss.append('#')
+                    ss.append(fill)
                     ed = st
                     while (txt[ed] >= 'a' and txt[ed] <= 'z') or (txt[ed] >= 'A' and txt[ed] <= 'Z')  or (txt[ed] >= '0' and txt[ed] <= '9') or txt[ed] in ['.', ':', '/']:
                         ed += 1 
@@ -81,12 +81,54 @@ class StatsTool(object):
                 if ed < len(txt):
                     ss.append(txt[ed:])
                 urls.append((i, ''.join(ss)))
-        linfo('OPTIMIZATION:url in %s instances replaced' % len(urls))
+        linfo('URL in %s instances replaced as H' % len(urls))
         for i, new_url in urls:
             _xs[i] = new_url
             #print new_url
         linfo('end replace url')
+    @classmethod
+    def replace_target(cls, _xs, fill):
+        linfo('begin replace username')
+        users = []
+        for i, txt in enumerate(_xs):
+            if '@' in txt:
+                ss = []
+                ed = 0
+                while '@' in txt[ed:]:
+                    txt = txt[ed:]
+                    st = txt.find('@')
+                    ss.append('%s' % txt[:st])
+                    ss.append(fill)
+                    ed = st
+                    while ed < len(txt) and txt[ed] != ' ':
+                        #print 'debug-ed:%s.%s' % (ed, txt[ed])
+                        ed += 1 
+                if ed < len(txt):
+                    ss.append(txt[ed:])
+                users.append((i, ''.join(ss)))
+        linfo('USERNAME in %s instances replaced as T' % len(users))
+        for i,new_user in users:
+            _xs[i] = new_user
+            #print _xs[i]
 
+        linfo('end replace username')
+    
+    @classmethod
+    def replace_topic(cls, _xs, fill):
+        linfo('begin replace topic')
+        cnt = 0
+        for i, txt in enumerate(_xs):
+            sharp_cnt = sum([c == '#' for c in txt])
+            if sharp_cnt <= 1:
+                continue
+            elif sharp_cnt > 2:
+                _xs[i] = ''
+                cnt += 1
+            else:
+                cnt += 1
+                tp = StatsTool.parse_topic(txt)
+                _xs[i] = txt.replace(tp, fill)
+        linfo('replace topic end. %s topic replaced' % (cnt))
    
     @classmethod
     def _retrieve_emoticon(cls, txt):
@@ -159,3 +201,90 @@ class StatsTool(object):
             rid2shard.setdefault(rid, [])
             rid2shard[rid].append(i)
         return rid2shard
+    
+    @classmethod
+    def parse_spatial(cls, dic):
+        city = None
+        if 'user' in dic and 'location' in dic['user']:
+            locs = dic['user']['location'].split(' ') 
+            p = locs[0]
+            if p in speical_province:
+                city = p
+            elif len(locs) > 1:
+                city =  dic['user']['location']
+        return city
+    @classmethod
+    def parse_topic(cls, txt, sharp_threshold=None):
+        topic = None
+        st_i = txt.find('#')
+        if st_i != -1:
+            ed_i = txt[st_i+1:].find('#')
+            if ed_i != -1:
+                topic = txt[st_i : st_i + 1 + ed_i + 1]
+                if sharp_threshold:
+                    sharp_cnt = 2
+                    for i in range(st_i + 1 + ed_i + 1, len(txt)):
+                        if txt[i] == '#':
+                            sharp_cnt += 1
+                            if sharp_cnt > sharp_threshold:
+                                return None
+        return topic
+    @staticmethod
+    def load_raw_data(path, filter_enabled=True, row_num=None, replace_enabled=True):
+        stat_ids = set()
+        st = time.time()
+        valid_stats = []
+        redundant, retweet_cnt = 0, 0
+        cur_row_num = 0
+        with open(path, 'r') as f:
+            for line in f:
+                cur_row_num += 1
+                if row_num != None:
+                    if cur_row_num > row_num:
+                        break
+                dic = json.loads(line.strip())
+                txt = dic['text']
+                if filter_enabled:
+                    if dic['id'] in stat_ids:
+                        redundant += 1
+                        continue
+                    else:
+                        stat_ids.add(dic['id'])
+                    if '//' in txt:
+                        st_i = txt.find('//')
+                        if st_i == 0 or txt[st_i-1] != ':':
+                            retweet_cnt += 1
+                            continue
+                valid_stats.append(txt)
+        linfo('Load Raw Data-Filter: %s. Valid Stats Return: %s' % (filter_enabled, len(valid_stats)))
+        if replace_enabled:
+            StatsTool.replace_url(valid_stats, fill='H')
+            StatsTool.replace_target(valid_stats, fill='T')
+        return valid_stats
+
+    @staticmethod
+    def preprocess(txts):
+        linfo('begin preprocess classifier input. cnt: %s' % (len(txts)))
+        raw_txts = copy.copy(txts)
+        StatsTool.replace_url(txts, 'H')
+        StatsTool.replace_target(txts, 'T')
+        StatsTool.replace_topic(txts, '')
+        return raw_txts, txts
+        #ret = filter(lambda x: x, txts)
+        #valid_ids = [i for i, x in enumerate(txts) if x]
+        #linfo('preprocess finish. cnt: %s' % (len(valid_ids)))
+        #return valid_ids
+        #return map(lambda i:raw_txts[i], valid_ids), map(lambda i:txts[i], valid_ids)
+
+
+
+if __name__ == '__main__':
+    st = u'@宁武发布 当选本期“网友点赞最多账号”'
+    #StatsTool.replace_target(tmp, fill='T')
+    demo = u'prefix#大连#, @tmp http://'
+    txts = [demo]
+    #StatsTool.remove_topic(txts, '')
+    #print txts
+    raw, txts = StatsTool.preprocess(txts)
+    print raw
+    print txts

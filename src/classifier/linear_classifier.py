@@ -29,7 +29,7 @@ class LinearClassifier(object):
         if name not in ['lr', 'svm']:
             raise Exception('NOT IMPLEMENTED LINEAR CLASSIFIER')
         self.model_path = '%s%s' % (model_prefix, name)
-        self.model_helper = LMH()
+        self.model_helper = LMH('tri','Dg_')
         self.test_tmp_path = '%s_%s' % (test_data_path, name)
         self.predict_tmp_path = '%s_%s' % (predict_data_path, name)
 

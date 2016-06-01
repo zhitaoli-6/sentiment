@@ -6,6 +6,7 @@ sys.path.insert(0, '/home/lizhitao/repos/sinaweibopy/')
 from snspy import APIClient as APIC, SinaWeiboMixin as WbM
 from const import APP_KEY, APP_SECRET, CALLBACK_URL, ACCESS_TOKEN, EXPIRES
 from easy_tool import EasyTool as ET
+from stats_tool import StatsTool as ST
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -30,6 +31,9 @@ class PublicStatRetriever(object):
         self.total_cnt = 0
 
     def online_run(self, interval=10, peroid=0.5, quiet=True):
+        '''
+        return value: [(city, stat)...]
+        '''
         stats_set = set()
         stats = []
         now = peroid
@@ -40,9 +44,11 @@ class PublicStatRetriever(object):
                 cnt += 1
                 if rsp:
                     for dic in rsp:
-                        if dic['text'] not in stats_set:
-                            stats.append(dic['text'])
-                            stats_set.add(dic['text'])
+                        if dic['id'] not in stats_set:
+                            city = ST.parse_spatial(dic)
+                            item = (city, dic['text'])
+                            stats.append(item)
+                            stats_set.add(dic['id'])
             except Exception as e:
                 logging.exception(e)
             now += peroid

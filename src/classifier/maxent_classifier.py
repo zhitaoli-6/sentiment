@@ -5,6 +5,7 @@ import logging, time, random, math
 
 from nltk import MaxentClassifier, classify
 
+sys.path.append('/home/lizhitao/repos/sentiment/src')
 from easy_tool import EasyTool as ET
 from stats_tool import StatsTool as ST
 
@@ -16,27 +17,29 @@ ldebug = logging.debug
 
 
 class MaxentClassifierHelper(object):
-    def __init__(self, path):
-        self._path = path
-        self._feature_extract_config = ['unigram']
+    def __init__(self, **config):
+        linfo('config: %s' % config)
+        self._path = config['train_path']
+        self._feature_extract_config = config['feature']
+        self._emoticon = config['emoticon']
 
-    def train(self,emoticon=True, cross_validation=False, fold_sz=10, test_path='../test_data/test_data'):
+    def train(self,cross_validation=False, fold_sz=10, test_path='../../test_data/tri_test_data'):
         self._train_xs, self._train_ys = ST.load_data(self._path)
-        ST.replace_url(self._train_xs, fill=True)
-        if not emoticon:
+        if not self._emoticon:
             ST.remove_emoticon(self._train_xs)
         self.gram2gid = self._discretize_gram2gid()
-
         if cross_validation:
             linfo('begin to cross train')
             self._cross_train(fold_sz)
         else:
+            classifier = self._train(self._train_xs, self._train_ys)
+
             self._test_xs, self._test_ys = ST.load_data(test_path)
-            ST.replace_url(self._test_xs, fill=True)
+            ST.replace_url(self._test_xs, fill='H')
+            ST.replace_target(self._test_xs, fill='T')
 
             test_set = [(self._feature_encoding(txt), tag) for txt, tag in zip(self._test_xs, self._test_ys)]
 
-            classifier = self._train(self._train_xs, self._train_ys)
             linfo('maxent classifier precision: %.4f' % classify.accuracy(classifier, test_set))
     
     def _cross_train(self, fold_sz):
@@ -76,12 +79,10 @@ class MaxentClassifierHelper(object):
         linfo('grams cnt: %s' % len(w2id))
         return w2id
 
-
-
-
 def main():
-    obj = MaxentClassifierHelper('../train_data/train_data')
-    obj.train(cross_validation=True, emoticon=False)
+    config={'train_path':'../../train_data/Dg_tri_train_data', 'emoticon':True, 'feature':['unigram']}
+    obj = MaxentClassifierHelper(**config)
+    obj.train()
     
 if __name__ == '__main__':
     logging.basicConfig(filename='/home/lizhitao/log/sentiment.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.INFO)

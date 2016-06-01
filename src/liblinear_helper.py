@@ -3,7 +3,7 @@
 import sys, os
 import json, logging, time, copy, random, math
 
-from const import TAG2INDEX, project_dir
+from const import TAG2INDEX, project_dir, feature_config, linear_model_config as model_config
 from easy_tool import EasyTool as ET
 from stats_tool import StatsTool as ST
 reload(sys)
@@ -16,22 +16,26 @@ ldebug = logging.debug
 #optimize: svm L2RL2L_Dual with unigram and bigram mixed. precision 74.8151
 
 class LinearModelInputHelper(object):
-    def __init__(self, ct='tri'):
-        self._path = '%s/train_data/%s_train_data' % (project_dir, ct)
+    def __init__(self, ct='tri', prefix=''):
+        if prefix and prefix != 'Dg_':
+            raise Exception('INVALID PREFIX GIVEN!!!')
+        self.flag_prefix = prefix
+        self.train_data_path = '%s/train_data/%s%s_train_data' % (project_dir, prefix, ct)
         if ct not in ['bi', 'tri']:
             raise Exception('INVALID Classifier Type')
         self.classifier_type = ct
         self.tag2index = TAG2INDEX
-        self._train_xs, self._train_ys = ST.load_data(self._path)
+        self._train_xs, self._train_ys = ST.load_data(self.train_data_path)
         self._train_ys = map(lambda x: self.tag2index[x], self._train_ys)
 
-        self._feature_extract_config = ['unigram', 'bigram']
+        #self._feature_extract_config = ['unigram', 'bigram']
+        self._feature_extract_config = feature_config 
         linfo('feature extract config: %s' % self._feature_extract_config)
         linfo('classifier type %s' % ct)
         linfo('init %s success' % self)
 
     def train_discret_model(self, **config):
-        linfo('begin train helper discret model')
+        linfo('begin train helper discret model: %s' % config)
         if not config['emoticon']:
             ST.remove_emoticon(self._train_xs)
         if not config['parenthesis']:
@@ -54,11 +58,15 @@ class LinearModelInputHelper(object):
     def format_test(self, emoticon=True, parenthesis=True):
         test_path='../test_data/%s_test_data' % self.classifier_type
         self._test_xs, self._test_ys = ST.load_data(test_path)
+        linfo('begin preprocess test data, then sparse')
+        self._raw_test_xs, self._test_xs = ST.preprocess(self._test_xs)
+        #ST.replace_url(self._test_xs, fill='H')
+        #ST.replace_target(self._test_xs, fill='T')
         self._test_ys = map(lambda x:self.tag2index[x], self._test_ys)
-        self.format_sparse(self._test_xs, self._test_ys, '%s/test_data/%s_sparse_test_data_%s' % (project_dir, self.classifier_type, 'icon' if emoticon else 'no_icon'))
+        self.format_sparse(self._test_xs, self._test_ys, '%s/test_data/%s%s_sparse_test_data_%s' % (project_dir, self.flag_prefix, self.classifier_type, 'icon' if emoticon else 'no_icon'))
 
     def format_train(self, emoticon=True, parenthesis=True):
-        self.format_sparse(self._train_xs, self._train_ys, '%s/train_data/%s_sparse_train_data_uni_bi_%s' % (project_dir, self.classifier_type, 'icon' if emoticon else 'no_icon'))
+        self.format_sparse(self._train_xs, self._train_ys, '%s/train_data/%s%s_sparse_train_data_%s' % (project_dir, self.flag_prefix, self.classifier_type, 'icon' if emoticon else 'no_icon'))
 
     def format_sparse(self,_xs, _ys, out_path):
         if os.path.exists(out_path):
@@ -126,10 +134,10 @@ class LinearModelInputHelper(object):
 
 def main():
     #print dir(WorkClassifier)
-    obj = LinearModelInputHelper('tri')
+    obj = LinearModelInputHelper('tri', 'Dg_')
     #obj.batch_extract_feature()
     #obj.debug()
-    config = {'emoticon':False, 'parenthesis':True}
+    config = model_config
     obj.run(**config)
 
     #obj.train(emoticon=False, parenthesis=True)
