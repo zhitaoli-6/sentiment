@@ -12,4 +12,4 @@
 
 ##Algorithms
 1. Statistics Based Machine Learning: Bayes, SVM, LR, Maxent
-2. Neural Netword Based: LSTM
+2. Neural Netword Based: LSTM(to be continued)
