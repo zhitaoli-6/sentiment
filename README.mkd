@@ -1,4 +1,5 @@
-#Sentiment analysis project: MoodIntimate Wiki
+#Sentiment analysis project(my thesis)
+
 ##Task
 * given Chinese sentence, MoodIntimate analyses it and predict the sentiment polarity
 
