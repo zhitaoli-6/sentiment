@@ -1,17 +1,17 @@
-#Sentiment analysis project(my thesis)
+# Sentiment analysis project(my thesis)
 
-##Task
+## Task
 * given Chinese sentence, MoodIntimate analyses it and predict the sentiment polarity
 
-##Appication
+## Appication
 * Sentiment Pattern Recognition
 * Abnormal Event Detection
 * Real-time Sentiment Monitoring
 
-##Train Data Source
+## Train Data Source
 * Weibo API
 
-##Algorithms
+## Algorithms
 1. Statistics Based Machine Learning: Bayes, SVM, LR, Maxent
 2. Neural Netword Based: LSTM(to be continued)
 
